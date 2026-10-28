@@ -54,9 +54,9 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
       - name: Validate the mod
-        run: claude plugin validate mods/glidepath
+        run: claude plugin validate .
       - name: Test the mod
-        run: claude plugin test mods/glidepath
+        run: claude plugin test .
 
   # scripts/ci_integration.py, in throwaway folders: glidepath install, the
   # statusLine command piped a payload through each shell Claude Code may run

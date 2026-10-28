@@ -245,3 +245,34 @@ class LongPaths(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BackgroundBootstrap(TempHome):
+    """A band's install with no prior builds one in the background, once, and
+    again a week on while the transcripts give none."""
+
+    def test_once_then_a_week_on(self):
+        started = []
+        popen = lambda cmd, **kw: started.append(cmd)  # noqa: E731
+        rt = ("/py", ["-I", "-S"], "/plugin/bin/glidepath")
+        self.assertTrue(transcripts.spawn_bootstrap(self.st, MON, rt, popen))
+        self.assertFalse(transcripts.spawn_bootstrap(self.st, MON + D, rt, popen))  # tried a day ago
+        self.assertTrue(transcripts.spawn_bootstrap(self.st, MON + 8 * D, rt, popen))  # still none, a week on
+        self.assertEqual(started, [["/py", "-I", "-S", "/plugin/bin/glidepath", "bootstrap"]] * 2)
+        self.st.meta_set("bootstrap", {"days": 30})
+        self.assertFalse(transcripts.spawn_bootstrap(self.st, MON + 30 * D, rt, popen))  # a prior: never again
+
+    def test_tests_never_start_a_real_one(self):
+        self.assertEqual(os.environ.get("GLIDEPATH_NO_BACKGROUND"), "1")
+        self.assertFalse(transcripts.spawn_bootstrap(self.st, MON))
+        self.assertIsNone(self.st.meta_get("bootstrap_tried_at"))  # not even marked
+
+    def test_the_mod_run_asks_and_the_terminal_does_not(self):
+        from glidepath import statusline
+
+        self.st.close()
+        with mock.patch.object(transcripts, "spawn_bootstrap", return_value=False) as spawn:
+            for source in ("statusline", "mod"):
+                opts = dict(statusline.parse_args([]), source=source)
+                statusline.compute("{}", self.cfg, opts, MON, lambda a, b: "")
+        self.assertEqual(spawn.call_count, 1)

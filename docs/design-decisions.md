@@ -1024,6 +1024,24 @@ folder, the variable that names it, the mod and its marketplace,
 SwiftBar's plugin, the statusLine command and its backups, and a launcher
 in bin/ for each.
 
+**D-41. The plugin alone.** Most tools in this niche install with one
+`/plugin install` line; glidepath needed a clone and an install, and the
+plugin directory takes only a plugin whose folder holds everything it runs.
+So the repository is the plugin (`.claude-plugin/plugin.json` beside the
+marketplace, whose entry is `./`), and Claude Code's copy of it carries the
+Python CLI. With no runtime.json (no `glidepath install`), the mod runs its
+own `bin/glidepath` with the first interpreter that answers `--version` as
+glidepath, asking the usual places by name, since the Desktop app may start
+with a short PATH; when none answers, the band says what to install. After
+an install, runtime.json still wins (its interpreter, and its entry while it
+exists), so one version writes the history. What the install did besides
+the band happens anyway: the prior is built in the background by a band's
+run when there is none (`transcripts.spawn_bootstrap`, once, and a week on
+while transcripts give none), and with no status line of ours the band draws
+in the terminal too (`mod.surfaces` null, `config.band_surfaces`). The
+status line, the launcher and the menu bar still need the install: they
+must outlive a plugin update, which moves Claude Code's copy.
+
 ## Windows
 
 **D-25. Windows: which shell, and one command for both.** Claude Code runs the

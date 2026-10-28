@@ -42,7 +42,7 @@ default):
 | `display.style` | `bars` | the terminal line: `bars`, or `classic` for the dense line of earlier versions |
 | `display.symbols` | `unicode` | `ascii` for `# = .` bars (and `x ^ v ->` in the classic line) |
 | `display.max_width` | 80 | the line drops optional parts to fit, then is cut with `…` (`...` in ascii mode); each part keeps its color |
-| `mod.surfaces` | `["desktop"]` | where the mod draws its band (add `terminal` if you do not use the status line) |
+| `mod.surfaces` | `null` | where the mod draws its band, e.g. `["desktop"]`; `null`: the Desktop app, and the terminal too when no `glidepath install` set the status line (the plugin alone) |
 | `mod.refresh_s` | 60 | how often the mod refreshes the band when no reading moved (15 to 3600) |
 | `compose.timeout_ms` | 1500 (3000 on Windows) | how long your previous status line may take; once it exits, glidepath reads its output for up to 500 ms more, and only a command still running at the timeout is stopped; on Windows, 5000 for a slow PowerShell or Git Bash script |
 | `fetch_usage_min` | 0 | every this many minutes the menu bar or a Desktop band runs `claude -p "/usage"` for the account's levels; 0 never (`glidepath fetch --every N`) |
@@ -99,8 +99,8 @@ glidepath/                 the core: store, ingest, pace, weekly, profile, band
                            install, legacy (the move from pacer and ctempo),
                            usagecmd (/usage), transcripts, clock (local time),
                            winshell (Windows shells and commands)
-mods/glidepath/            the Desktop mod (TypeScript, thin)
-.claude-plugin/            local marketplace: glidepath
+hooks/, types/             the mod (TypeScript, thin): the band above the prompt
+.claude-plugin/            the plugin's manifest, and its marketplace (glidepath)
 tests/                     unittest suite
 scripts/bench_statusline.py
 scripts/ci_integration.py  end to end through each shell (CI on Windows, macOS)

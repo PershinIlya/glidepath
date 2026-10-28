@@ -4,6 +4,32 @@
 what glidepath changes on your machine, Windows in detail, upgrading and
 uninstalling.
 
+## The plugin alone
+
+In Claude Code in a terminal:
+
+```
+/plugin install glidepath --marketplace PershinIlya/glidepath
+```
+
+In the Desktop app: **+** next to the prompt box, **Plugins**, **Add
+marketplace** with `PershinIlya/glidepath`, **Add plugin**.
+
+This installs the band, nothing else: no `settings.json` change, no status
+line, no launcher. Claude Code keeps the plugin, Python code included, in its
+own plugin folder; the band runs that code with the first interpreter that
+answers as glidepath (`python3`, then Homebrew's and `/usr/bin/python3` on a
+Mac, `python`; on Windows `py -3`, `python`, `python3`) and keeps its history
+in `~/.glidepath`, as an install from a clone does. Its first runs build the
+weekly profile's prior from your transcripts in the background
+(`glidepath bootstrap`, once; again a week on if there were none). With no
+status line of ours, the band draws in the terminal too (`mod.surfaces`).
+
+When an install from a clone is on the same computer (it writes
+`~/.glidepath/runtime.json`), the band runs that one's interpreter and code
+instead, so one version of glidepath writes the history. Remove the plugin
+with `/plugin uninstall glidepath` and `/plugin marketplace remove glidepath`.
+
 ## Install (macOS and Linux)
 
 ```sh
@@ -26,7 +52,7 @@ python3 bin/glidepath install --apply --bin-dir ~/.local/bin
    joined line would not fit Claude Code's footer (`--replace` to replace it
    instead); a background job your command starts keeps running, and a command
    still running after `compose.timeout_ms` is stopped;
-3. installs the Desktop mod from the local marketplace in this repo:
+3. installs the band (the plugin) from the local marketplace in this repo:
    `claude plugin marketplace add <repo>` then
    `claude plugin install glidepath@glidepath` (`--no-mod` to skip). If
    `claude` is not on PATH, it prints the two commands for you to run, and

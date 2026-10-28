@@ -34,7 +34,7 @@ type Options = {
   denied?: string
   limits?: SessionRateLimit[]
   env?: Record<string, string>
-  run?: () => { value: ProcessRunResult }
+  run?: (argv: readonly string[]) => { value: ProcessRunResult } | { deny: string }
   // What $.fs.exists answers; left out, nothing answers it (the call rejects).
   exists?: (path: string) => boolean
   // GLIDEPATH_HOME/changed as the CLI leaves it; absent, the file is missing.
@@ -79,7 +79,7 @@ function stub(on: StubOn, options: Options = {}) {
   if (exists) on('fs.exists', (_$, e) => ({ value: exists(e.path) }))
   on('process.run', (_$, e) => {
     runs.push(e)
-    return options.run?.() ?? ran(JSON.stringify(CLI))
+    return options.run?.(e.argv) ?? ran(JSON.stringify(CLI))
   })
   on('session.start', () => ({ cwd: '/work' }))
   on('session.measure', (_$, e) => ({ changed: e.changed }))
@@ -179,13 +179,64 @@ test('records new readings when a window moves and refreshes every minute', asyn
   expect(runs.length).toBe(3)
 })
 
-test('explains itself when glidepath is not installed', async ($, on) => {
-  const { runs, clock } = stub(on, { runtime: null })
+// The plugin alone, no `glidepath install`: no runtime.json, so the CLI
+// beside the module, run by the first Python that answers its --version.
+const VERSION = ran('glidepath 0.2.0\n')
+const notRun = (code: number) => ({
+  value: { exitCode: code, stdout: '', stderr: 'not found', isStdoutTruncated: false, isStderrTruncated: false },
+})
+
+test('says how to get Python when glidepath finds none', async ($, on) => {
+  const { runs, clock } = stub(on, { runtime: null, run: () => notRun(127) })
+  await $.session.start(start('desktop'))
+  await clock.advance(1)
+  expect(runs.length).toBeGreaterThan(0)
+  expect(runs.every((r) => r.argv.at(-1) === '--version')).toBe(true) // asked, never run
+  const ui = await $.ui.mount(band('desktop'))
+  expect(await ui.find({ type: 'Text', text: /^glidepath: needs Python 3\.8/ })).toMatchObject({
+    props: { dimColor: true },
+  })
+})
+
+test('with no runtime.json, runs the CLI beside it with the first Python that answers', async ($, on) => {
+  const { runs, clock } = stub(on, {
+    runtime: null,
+    run: (argv) =>
+      argv[0] === 'python3' ? { deny: 'spawn python3 ENOENT' } // cannot start
+      : argv.at(-1) === '--version' ? (argv[0] === '/opt/homebrew/bin/python3' ? ran('Python 3.12.1\n') : VERSION)
+      : ran(JSON.stringify(CLI)),
+  })
+  await $.session.start(start('desktop'))
+  await clock.advance(1)
+  const probes = runs.filter((r) => r.argv.at(-1) === '--version').map((r) => r.argv[0])
+  expect(probes).toEqual(['python3', '/opt/homebrew/bin/python3', '/usr/local/bin/python3'])
+  const cli = runs.find((r) => r.argv.includes('statusline'))
+  expect(cli?.argv.slice(0, 3)).toEqual(['/usr/local/bin/python3', '-I', '-S'])
+  expect(slashed(cli?.argv[3])).toMatch(ending('/bin/glidepath'))
+  const ui = await $.ui.mount(band('desktop'))
+  expect(await ui.find({ type: 'Text', text: /^glidepath: needs/ })).toBeUndefined()
+})
+
+test('Windows: asks the Python launcher first, with the flags install pins', async ($, on) => {
+  const { runs, clock } = stub(on, {
+    runtime: null,
+    env: { OS: 'Windows_NT', USERPROFILE: 'C:\\Users\\Max Power' },
+    run: (argv) => (argv.at(-1) === '--version' ? VERSION : ran(JSON.stringify(CLI))),
+  })
+  await $.session.start(start('desktop'))
+  await clock.advance(1)
+  const cli = runs.find((r) => r.argv.includes('statusline'))
+  expect(cli?.argv.slice(0, 6)).toEqual(['py', '-3', '-I', '-S', '-X', 'utf8'])
+  expect(cli?.argv[6]).toMatch(/\\bin\\glidepath$/)
+})
+
+test('a runtime.json it cannot read for another reason says so, and asks no Python', async ($, on) => {
+  const { runs, clock } = stub(on, { runtime: null, denied: 'EACCES: permission denied' })
   await $.session.start(start('desktop'))
   await clock.advance(1)
   expect(runs.length).toBe(0)
   const ui = await $.ui.mount(band('desktop'))
-  expect(await ui.find({ type: 'Text', text: /^glidepath: / })).toMatchObject({ props: { dimColor: true } })
+  expect(await ui.find({ type: 'Text', text: /EACCES/ })).toBeDefined()
 })
 
 test('shows why when the CLI fails, instead of a JSON parse error', async ($, on) => {
@@ -979,4 +1030,14 @@ test('logs which surfaces the session draws on and whether one asked for the ban
   expect(log()).toMatch(/band asked on desktop: drawn\n$/)
   await $.ui.mount(band('terminal'))
   expect(log()).toMatch(/band asked on terminal: not drawn, not in mod.surfaces \[desktop\]\n$/)
+})
+
+test('a pinned clone that is gone: the CLI beside the module, with the pinned Python', async ($, on) => {
+  const { runs, clock } = stub(on, { exists: (path) => !slashed(path).endsWith('/repo/bin/glidepath') })
+  await $.session.start(start('desktop'))
+  await clock.advance(1)
+  const cli = runs.find((r) => r.argv.includes('statusline'))
+  expect(cli?.argv.slice(0, 3)).toEqual(['/usr/bin/python3', '-I', '-S'])
+  expect(slashed(cli?.argv[3])).toMatch(ending('/bin/glidepath'))
+  expect(slashed(cli?.argv[3])).not.toMatch(ending('/repo/bin/glidepath'))
 })

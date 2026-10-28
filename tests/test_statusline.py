@@ -230,7 +230,7 @@ class Statusline(unittest.TestCase):
             statusline.main(["--format", "json"])
         d = json.loads(o.buffer.getvalue())
         self.assertFalse(d["ok"])
-        self.assertEqual(d["surfaces"], ["desktop"])
+        self.assertEqual(d["surfaces"], ["desktop", "terminal"])  # no `glidepath install` here: the plugin alone
         self.assertEqual(d["refresh_s"], 60)
 
     def test_epoch_leak_payload_is_not_shown(self):

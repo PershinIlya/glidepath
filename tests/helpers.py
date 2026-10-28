@@ -100,6 +100,8 @@ class TempHome(unittest.TestCase):
         self.old_home = os.environ.get("GLIDEPATH_HOME")
         os.environ["GLIDEPATH_HOME"] = self.dir
         self.old_envs = {k: os.environ.pop(k) for k in config.OLD_ENVS if k in os.environ}  # never an old name's
+        self.old_bg = os.environ.get("GLIDEPATH_NO_BACKGROUND")
+        os.environ["GLIDEPATH_NO_BACKGROUND"] = "1"  # no real background bootstrap from a test's band run
         self.old_ccd = os.environ.get("CLAUDE_CONFIG_DIR")
         os.environ["CLAUDE_CONFIG_DIR"] = os.path.join(self.dir, "claude")  # never the real ~/.claude
         self.cfg = config.load()
@@ -112,6 +114,8 @@ class TempHome(unittest.TestCase):
         else:
             os.environ["GLIDEPATH_HOME"] = self.old_home
         os.environ.update(self.old_envs)
+        if self.old_bg is None:
+            os.environ.pop("GLIDEPATH_NO_BACKGROUND", None)
         if self.old_ccd is None:
             os.environ.pop("CLAUDE_CONFIG_DIR", None)
         else:

@@ -12,6 +12,12 @@ pacer or nearly, two of them with a `pacer` command.
   then `bin/pacer`, `PACER_HOME` and `~/.pacer` keep working.
 - The repository moves to https://github.com/PershinIlya/glidepath (the old
   addresses redirect).
+- The band installs in one line, `/plugin install glidepath --marketplace
+  PershinIlya/glidepath`, with no clone: the repository is the plugin, and
+  the band runs the Python code that comes with it, builds the weekly
+  profile in the background on its first runs, and draws in the terminal too
+  when no status line of ours is installed. The status line and the menu bar
+  still come from `glidepath install`.
 - The README compares glidepath with similar tools.
 
 ## 0.1.0 (2026-10)

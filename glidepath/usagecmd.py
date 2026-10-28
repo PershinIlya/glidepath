@@ -189,6 +189,13 @@ def spawn(st, now, cfg, runtime=None, popen=None):
     they land (the stamp). Returns whether it started one."""
     if not due(st, now, every(cfg)):
         return False
+    return background(["fetch"], runtime, popen)
+
+
+def background(command, runtime=None, popen=None):
+    """Start `glidepath <command>` detached, with no console and no pipes, so the
+    run that starts it (a band's, under the mod's one-shot process call)
+    never waits for it. Returns whether it started."""
     if runtime is None:
         from .menubar import runtime as installed
 
@@ -205,7 +212,7 @@ def spawn(st, now, cfg, runtime=None, popen=None):
     popen = popen or subprocess.Popen
     for opts in tries:
         try:
-            popen([python] + list(args) + [entry, "fetch"], **opts)
+            popen([python] + list(args) + [entry] + list(command), **opts)
             return True
         except OSError:
             continue

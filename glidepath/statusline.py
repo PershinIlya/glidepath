@@ -116,6 +116,13 @@ def compute(raw, cfg, opts, now, line_of=None):
                 usagecmd.spawn(st, now, cfg)
             except Exception as e:
                 log_error(e, "fetch")
+        if opts["record"] and opts["source"] == "mod":
+            try:  # a band with no profile prior builds one, once (transcripts)
+                from . import transcripts
+
+                transcripts.spawn_bootstrap(st, now)
+            except Exception as e:
+                log_error(e, "bootstrap")
     finally:
         st.close()
     return v5, vw, readings
@@ -467,7 +474,7 @@ def main(argv):
                     "ok": True,
                     "line": render.plain(segs),
                     "segments": [{"text": t, "tone": tone} for t, tone in segs],
-                    "surfaces": cfg["mod"].get("surfaces", ["desktop"]),
+                    "surfaces": config.band_surfaces(cfg),
                     "refresh_s": cfg["mod"].get("refresh_s", 60),
                     "five_hour": _brief(v5),
                     "seven_day": _brief(vw),
@@ -486,7 +493,7 @@ def main(argv):
             mod = (cfg or config.DEFAULTS)["mod"]
             out = json.dumps(
                 {"ok": False, "line": "glidepath: error", "segments": [{"text": "glidepath: error", "tone": "dim"}],
-                 "surfaces": mod.get("surfaces", ["desktop"]), "refresh_s": mod.get("refresh_s", 60)},
+                 "surfaces": config.band_surfaces(cfg or config.DEFAULTS), "refresh_s": mod.get("refresh_s", 60)},
                 separators=(",", ":"),
             )
         else:

@@ -16,7 +16,7 @@ from unittest import mock
 
 from glidepath import cli, commands, config, install, statusline
 
-from .helpers import TZ_UTC, payload, write_json
+from .helpers import TZ_UTC, TempHome, payload, write_json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENTRY = os.path.join(ROOT, "bin", "glidepath")
@@ -41,7 +41,7 @@ class NoDriveHome(unittest.TestCase):
     python.exe sees it, while the mod and PowerShell used C:\\srv\\glidepath: 2
     folders, and under Program Files none a user can create. Windows refuses
     such a value, the same way in the CLI and the mod
-    (mods/glidepath/tests/register.test.ts); every entry point says why."""
+    (tests/register.test.ts); every entry point says why."""
 
     REFUSED = ("/srv/glidepath", "/glidepath", "/tmp/x", "/", "/cc/x", "/1/x", "/c\\x", "/\u00e9/x")
 
@@ -267,3 +267,23 @@ class ComposeTimeout(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BandSurfaces(TempHome):
+    """Where the band draws when mod.surfaces is left to glidepath: the Desktop
+    app, and the terminal too while no `glidepath install` set a status line."""
+
+    def test_the_plugin_alone_draws_in_the_terminal_too(self):
+        cfg = config.load()
+        self.assertIsNone(cfg["mod"]["surfaces"])
+        self.assertEqual(config.band_surfaces(cfg), ["desktop", "terminal"])
+        with open(config.runtime_path(), "w") as f:
+            f.write("{}")
+        self.assertEqual(config.band_surfaces(cfg), ["desktop"])
+
+    def test_a_list_the_user_gives_wins_and_anything_else_picks(self):
+        for given, want in ((["terminal"], ["terminal"]), ([], []), ("desktop", ["desktop", "terminal"]),
+                            ([1, 2], ["desktop", "terminal"])):
+            with open(config.config_path(), "w") as f:
+                json.dump({"mod": {"surfaces": given}}, f)
+            self.assertEqual(config.band_surfaces(config.load()), want, given)

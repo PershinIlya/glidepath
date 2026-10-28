@@ -85,9 +85,10 @@ DEFAULTS = {
         "timeout_ms": compose_timeout_ms(),
         "separator": "  ",
     },
-    # Surfaces where the mod draws its band. The terminal already has the
-    # statusLine, so it is left out by default.
-    "mod": {"surfaces": ["desktop"], "refresh_s": 60},
+    # Surfaces where the mod draws its band, e.g. ["desktop"]. null (the
+    # default) picks: the Desktop app, and the terminal too when no status line
+    # of ours is installed (band_surfaces).
+    "mod": {"surfaces": None, "refresh_s": 60},
     # Every this many minutes the menu bar or a Desktop band asks Claude
     # Code's own /usage for the account's levels, so work in chats, cloud
     # sessions or on another computer shows too (0: never; `glidepath fetch`).
@@ -334,9 +335,22 @@ def normalize(cfg):
         cfg["compose"]["separator"] = "  "
     cfg["profile"]["override"] = _override(cfg["profile"].get("override"))
     given = cfg["mod"]["surfaces"]
-    kept = [x for x in given if isinstance(x, str)]
-    cfg["mod"]["surfaces"] = kept if (kept or not given) else ["desktop"]  # [] means: draw nowhere
+    if isinstance(given, list):
+        kept = [x for x in given if isinstance(x, str)]
+        cfg["mod"]["surfaces"] = kept if (kept or not given) else None  # [] means: draw nowhere
+    else:
+        cfg["mod"]["surfaces"] = None
     return cfg
+
+
+def band_surfaces(cfg):
+    """Where the mod draws its band: mod.surfaces when set; else the Desktop
+    app, and the terminal too when no `glidepath install` is here (no
+    runtime.json), so no status line of ours shows there (the plugin alone)."""
+    given = (cfg or {}).get("mod", {}).get("surfaces")
+    if isinstance(given, list):
+        return given
+    return ["desktop"] if os.path.exists(runtime_path()) else ["desktop", "terminal"]
 
 
 def _read(path=None):

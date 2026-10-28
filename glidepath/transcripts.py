@@ -250,3 +250,32 @@ def bootstrap(store, cfg, now=None, days=None, root=None, dry_run=False):
             store.rollback()
             raise
     return prior, meta, stats
+
+
+# A band's install (the plugin alone, no `glidepath install`) has no prior: its
+# runs build one in the background, once, and again a week on while the
+# transcripts give none.
+BOOTSTRAP_RETRY_S = 7 * 86400
+
+
+def bootstrap_due(store, now):
+    """Whether a background bootstrap is due; marks the attempt, so overlapping
+    runs do not start several."""
+    if store.meta_get("bootstrap") is not None:
+        return False
+    if now - (store.meta_get("bootstrap_tried_at", 0) or 0) < BOOTSTRAP_RETRY_S:
+        return False
+    store.meta_set("bootstrap_tried_at", now)
+    return True
+
+
+def spawn_bootstrap(store, now, runtime=None, popen=None):
+    """Start `glidepath bootstrap` in the background when one is due (bootstrap_due).
+    GLIDEPATH_NO_BACKGROUND (the tests) keeps a real one from starting."""
+    if popen is None and os.environ.get("GLIDEPATH_NO_BACKGROUND"):
+        return False
+    if not bootstrap_due(store, now):
+        return False
+    from .usagecmd import background
+
+    return background(["bootstrap"], runtime, popen)

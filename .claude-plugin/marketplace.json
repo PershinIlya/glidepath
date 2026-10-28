@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "glidepath",
-      "source": "./mods/glidepath",
+      "source": "./",
       "description": "Know if your Claude Code usage will last until the reset: the 5-hour and weekly pace above the prompt"
     }
   ]

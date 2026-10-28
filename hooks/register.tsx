@@ -25,8 +25,32 @@ const REFRESH_MS = 60_000
 const POLL_MS = 5_000
 // The interpreter flags of a runtime.json written before it listed them.
 const DEFAULT_ARGS: readonly string[] = ['-I', '-S']
+// With no `glidepath install` here (the plugin alone): the CLI shipped beside
+// this module, run by the first of these that answers its --version. The
+// Desktop app may start with a short PATH, so the usual places on a Mac are
+// asked by name too. Flags as `glidepath install` pins them (winshell).
+const PROBES: Record<'posix' | 'windows', readonly (readonly string[])[]> = {
+  posix: [['python3'], ['/opt/homebrew/bin/python3'], ['/usr/local/bin/python3'], ['/usr/bin/python3'], ['python']],
+  windows: [['py', '-3'], ['python'], ['python3']],
+}
+const PROBE_ARGS: Record<'posix' | 'windows', readonly string[]> = {
+  posix: DEFAULT_ARGS,
+  windows: ['-I', '-S', '-X', 'utf8'],
+}
+const PROBE_TIMEOUT_MS = 15_000
+export const NO_PYTHON =
+  'needs Python 3.8 or newer and found none: install it (python.org; on Windows ' +
+  '`winget install Python.Python.3.12`), then run /reload-plugins'
 
-type Runtime = { python: string; args: readonly string[]; entry: string; home: string; windows: boolean }
+// pinned: from runtime.json (`glidepath install`), else found by asking (PROBES).
+type Runtime = {
+  python: string
+  args: readonly string[]
+  entry: string
+  home: string
+  windows: boolean
+  pinned: boolean
+}
 
 // Desktop paints theme keys; the terminal maps them to its palette. Tones of
 // the classic line, then the bars line's words and bar parts.
@@ -186,6 +210,27 @@ export function resolveHome(value: string | undefined, user: UserHome): string {
   return rest ? join(home, rest, windows) : home
 }
 
+// The CLI shipped with this module: bin/glidepath in the plugin's folder.
+function ownEntry($: EngineInterface, windows: boolean): string {
+  return join($.plugin.root, windows ? 'bin\\glidepath' : 'bin/glidepath', windows)
+}
+
+// The first interpreter that runs `entry --version` as glidepath, or null.
+async function findPython($: EngineInterface, entry: string, windows: boolean) {
+  const os = windows ? 'windows' : 'posix'
+  for (const probe of PROBES[os]) {
+    const [python, ...pre] = probe
+    const args = [...pre, ...PROBE_ARGS[os]]
+    try {
+      const result = await $.process.run([python, ...args, entry, '--version'], { timeoutMs: PROBE_TIMEOUT_MS })
+      if (result.exitCode === 0 && /^glidepath \d/.test(result.stdout.trim())) return { python, args }
+    } catch {
+      // cannot start: not there
+    }
+  }
+  return null
+}
+
 async function loadRuntime($: EngineInterface): Promise<Runtime> {
   if (runtime !== null) return runtime
   const user = await userHome($)
@@ -194,9 +239,17 @@ async function loadRuntime($: EngineInterface): Promise<Runtime> {
   try {
     text = await $.fs.read(join(home, 'runtime.json', user.windows))
   } catch (error) {
-    if (!isNetwork(home, user.windows)) throw error
     const why = error instanceof Error ? error.message : String(error)
-    throw new Error(`cannot read runtime.json from network path ${home}: set GLIDEPATH_HOME to a local folder (${why})`)
+    if (isNetwork(home, user.windows)) {
+      throw new Error(`cannot read runtime.json from network path ${home}: set GLIDEPATH_HOME to a local folder (${why})`)
+    }
+    if (!/ENOENT|no such file|cannot find/i.test(why)) throw error
+    // No `glidepath install` here: the CLI beside this module.
+    const entry = ownEntry($, user.windows)
+    const found = await findPython($, entry, user.windows)
+    if (found === null) throw new Error(NO_PYTHON)
+    runtime = { ...found, entry, home, windows: user.windows, pinned: false }
+    return runtime
   }
   // A byte order mark (a Windows editor's) would make JSON.parse throw.
   const parsed = JSON.parse(text.replace(/^﻿/, '')) as { python?: unknown; args?: unknown; entry?: unknown }
@@ -207,7 +260,9 @@ async function loadRuntime($: EngineInterface): Promise<Runtime> {
   if (!Array.isArray(args) || !args.every((arg) => typeof arg === 'string')) {
     throw new Error('runtime.json args is not a list of strings; run `glidepath install --apply`')
   }
-  runtime = { python: parsed.python, args, entry: parsed.entry, home, windows: user.windows }
+  // A clone that is gone: the CLI beside this module, with the pinned Python.
+  const entry = (await $.fs.exists(parsed.entry).catch(() => true)) ? parsed.entry : ownEntry($, user.windows)
+  runtime = { python: parsed.python, args, entry, home, windows: user.windows, pinned: true }
   return runtime
 }
 
@@ -320,7 +375,9 @@ async function runOnce($: EngineInterface, limits: readonly SessionRateLimit[] |
     // misreported while it works.
     if (result.exitCode !== 0 && !(await $.fs.exists(rt.python).catch(() => true))) {
       runtime = null // read runtime.json again on the next refresh, after a reinstall
-      throw new Error(`Python not found at ${rt.python}: run \`glidepath install --apply\``)
+      throw new Error(
+        rt.pinned ? `Python not found at ${rt.python}: run \`glidepath install --apply\`` : NO_PYTHON,
+      )
     }
     const lines = result.stderr.trim().split(/\r?\n/)
     // cmd.exe's own message spans 2 lines.

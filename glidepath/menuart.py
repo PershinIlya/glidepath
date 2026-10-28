@@ -1,6 +1,6 @@
 """The band's bars as pictures for the macOS menu bar (SwiftBar `image=`).
 
-The same language as the Desktop band (mods/glidepath/hooks/register.tsx,
+The same language as the Desktop band (hooks/register.tsx,
 barSvg): orange for what is used, a pale orange forecast to the reset after
 a hairline gap (fading while the estimate is rough), red into a wall when it
 runs out, green dots over quota that will go unused, all red when reached,

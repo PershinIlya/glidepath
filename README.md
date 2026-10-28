@@ -39,16 +39,34 @@ hands to its status line, and keeps a small history on your machine. Python
 - **A Claude Pro or Max plan**, used through Claude Code. Claude Code passes
   the plan's rate limits to the status line and to mods; with an API key
   there are none to show.
-- **Claude Code**, the CLI (for the status line) or the Desktop app (for the
-  band; mods need a recent version).
+- **A recent Claude Code**, in a terminal or the Desktop app.
 - **Python 3.8 or newer** (3.9+ for the optional `/usage` fetch). macOS has
-  one with the Command Line Tools; on Windows, install it from python.org or
-  with `winget install Python.Python.3.12`.
+  one with the Command Line Tools (`xcode-select --install`); on Windows,
+  install it from python.org or with `winget install Python.Python.3.12`.
 - **Optional:** [SwiftBar](https://swiftbar.app) for the macOS menu bar.
 
 ## Install
 
-macOS and Linux:
+**The band, in one line.** In Claude Code in a terminal:
+
+```
+/plugin install glidepath --marketplace PershinIlya/glidepath
+```
+
+Answer `y` to add the marketplace and pick the user scope. In the Claude
+Desktop app, where `/plugin` does not run: click **+** next to the prompt box,
+then **Plugins**, **Add marketplace** with `PershinIlya/glidepath`, then **Add
+plugin**.
+
+That is all for the band: it shows above the prompt in the Desktop Code tab
+and in the terminal from your next message on, and on its first run learns a
+first picture of your week from the timestamps of your past Claude Code
+sessions, in the background. It runs the Python code that comes with it, with
+the first Python 3.8+ it finds; when it finds none, the band says so.
+
+**The status line and the menu bar.** For glidepath in the terminal's own
+status line, and for the macOS menu bar, install it from a clone too. macOS
+and Linux:
 
 ```sh
 git clone https://github.com/PershinIlya/glidepath.git ~/Projects/glidepath
@@ -67,12 +85,12 @@ py -3 bin\glidepath install --apply --bin-dir $HOME\.local\bin
 ```
 
 `install --apply` backs up `~/.claude/settings.json`, sets its `statusLine`
-(your existing status line keeps running, with glidepath's part added), installs
-the Desktop mod, and learns a first picture of your week from the timestamps
-of your past Claude Code sessions. The status line works at once; restart
-Claude Code (or run `/reload-plugins`) for the band. Then run `glidepath doctor`
-to check everything. [docs/install.md](docs/install.md) has every step and
-what each one changes.
+(your existing status line keeps running, with glidepath's part added),
+installs the band from the clone (so the line above is not needed then), and
+pins the Python it found for both. The status line works at once; restart
+Claude Code (or run `/reload-plugins`) for the band. Then run `glidepath
+doctor` to check everything. [docs/install.md](docs/install.md) has every step
+and what each one changes.
 
 **Mac menu bar.** With SwiftBar installed and opened once:
 
@@ -95,14 +113,17 @@ I trust this folder": Claude Code shows plan limits only in a trusted folder).
 
 ## Uninstall
 
+The plugin alone: `/plugin uninstall glidepath`, then `/plugin marketplace
+remove glidepath`. An install from a clone:
+
 ```sh
 glidepath uninstall            # a dry run
 glidepath uninstall --apply
 ```
 
 It puts your previous status line back (byte for byte when you did not edit
-the file since), removes the mod and the menu bar plugin, and leaves your
-history in `~/.glidepath` (delete it if you want it gone).
+the file since), removes the band and the menu bar plugin. Either way your
+history stays in `~/.glidepath` (delete it if you want it gone).
 
 ## Privacy and safety
 
@@ -147,7 +168,7 @@ Corrections are welcome in an issue.
 | Says how sure it is | Yes, narrowing toward the reset | No | No | No | Yes | Yes (80% interval) | No |
 | Per-model weekly limits | No | No | Yes | Yes | Yes | Yes | No |
 | Several accounts or providers | No | No | Yes (Codex too) | Yes (many providers) | Accounts | No | No |
-| Install | `git clone`, then `install` | Plugin, npx or curl | Homebrew, DMG | Homebrew, DMG | Homebrew, DMG | Homebrew, binary | Plugin |
+| Install | Plugin (`git clone` for the status line) | Plugin, npx or curl | Homebrew, DMG | Homebrew, DMG | Homebrew, DMG | Homebrew, binary | Plugin |
 | Runs on | Python 3.8+ standard library | bash, jq | Native app | Native app | Native app | Single binary | Claude Code |
 | License | MIT | MIT | MIT | Apache-2.0 | MIT | MIT | MIT |
 
