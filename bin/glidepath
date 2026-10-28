@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Launcher: puts the repo on sys.path and runs glidepath.
+
+Works under `python -I -S` (isolated, no site), which is how the installed
+statusLine command runs it: stdlib only, nothing from PYTHONPATH or conda.
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+if os.name == "nt":  # a TZ the C runtime misreads goes before anything reads local time
+    from glidepath.clock import windows_tz
+
+    windows_tz()
+
+if len(sys.argv) > 1 and sys.argv[1] == "statusline":
+    from glidepath.statusline import main
+
+    sys.exit(main(sys.argv[2:]))
+
+from glidepath.cli import main  # noqa: E402
+
+sys.exit(main(sys.argv[1:]))

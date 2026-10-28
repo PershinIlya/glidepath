@@ -1,4 +1,4 @@
-"""Charts for Details and the menu bar (pacer/chart.py, menuart.chart, png lines)."""
+"""Charts for Details and the menu bar (glidepath/chart.py, menuart.chart, png lines)."""
 
 import argparse
 import base64
@@ -13,8 +13,8 @@ import unittest
 import zlib
 from unittest import mock
 
-from pacer import band, chart, clock, commands, config, menuart, menubar, profile, statusline
-from pacer.png import Canvas
+from glidepath import band, chart, clock, commands, config, menuart, menubar, profile, statusline
+from glidepath.png import Canvas
 
 from .helpers import MON, H, D, TempHome, payload, zone
 from .test_band import NOW, STATES, v5 as a_v5
@@ -283,7 +283,7 @@ class Build(TempHome):
         c = chart.build(self.st, v5, now)
         if v5.get("cap_ts") and R5 - v5["cap_ts"] > 600 and not v5.get("shaky"):
             self.assertEqual(c["out"], int(v5["cap_ts"]))
-            from pacer import band
+            from glidepath import band
             self.assertEqual(c["out_label"], band.at(v5["cap_ts"], now))
         else:
             self.assertIsNone(c["out"])

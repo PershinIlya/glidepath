@@ -1,6 +1,6 @@
 ---
 name: Idea
-about: Something pacer could show or do
+about: Something glidepath could show or do
 labels: enhancement
 ---
 

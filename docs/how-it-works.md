@@ -1,6 +1,6 @@
-# How pacer works
+# How glidepath works
 
-Every number pacer shows, and how it is computed. [Design decisions](design-decisions.md)
+Every number glidepath shows, and how it is computed. [Design decisions](design-decisions.md)
 explains why each rule is the way it is, with the cases that shaped it.
 
 **5-hour window**
@@ -40,7 +40,7 @@ explains why each rule is the way it is, with the cases that shaped it.
   span from it to the reset that has passed; delta = used − on-pace;
 - intensity = what you spent over this week's last 24 awake hours / what
   the profile expected for those hours (at target pace), pulled toward your
-  typical week (or the target, before pacer has seen a whole week): the
+  typical week (or the target, before glidepath has seen a whole week): the
   typical week counts as much as a tenth of a week's spend would, so right
   after a reset it leads, and as the week brings evidence it fades. The count
   never reaches back past the reset: the last days of a week (when quota

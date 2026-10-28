@@ -1,9 +1,9 @@
-"""`pacer install` / `pacer uninstall`.
+"""`glidepath install` / `glidepath uninstall`.
 
 Dry run by default; --apply writes. Edits exactly one key of settings.json
 (statusLine), keeps every other key and hook, keeps the file's indentation
 and trailing newline, backs it up with a timestamp before writing, and
-records what it did in ~/.pacer/install.json (one record per settings
+records what it did in ~/.glidepath/install.json (one record per settings
 file) so uninstall can put the original back. The record is saved before the
 settings file is written. When the file has not changed since install apart
 from what install and the plugin CLI did, uninstall restores it byte for
@@ -12,7 +12,7 @@ byte (line endings and mode included).
 On Windows the statusLine runs in Git Bash or PowerShell (see winshell), so the
 command uses forward slashes and -X utf8, in a form both shells read the same
 when there is one, else in the syntax of the shell Claude Code will use (which
-the record keeps); the launcher is a pacer.cmd, with an sh `pacer` beside it
+the record keeps); the launcher is a glidepath.cmd, with an sh `glidepath` beside it
 for Git Bash.
 """
 
@@ -35,13 +35,14 @@ import time
 
 from . import __version__, config, statusline, winshell
 
-MARKETPLACE = "pacer"
-PLUGIN = "pacer"
+MARKETPLACE = "glidepath"
+PLUGIN = "glidepath"
 PLUGIN_ID = PLUGIN + "@" + MARKETPLACE
+NAMES = ("glidepath", "pacer", "ctempo")  # this name and the earlier ones (legacy.py)
 PLUGIN_KEYS = ("enabledPlugins", "extraKnownMarketplaces")
 OWN_ENTRY = {"enabledPlugins": PLUGIN_ID, "extraKnownMarketplaces": MARKETPLACE}
-LAUNCHER_MARK = "# pacer launcher"
-CMD_MARK = "rem pacer launcher"  # the same, in the Windows pacer.cmd
+LAUNCHER_MARK = "# glidepath launcher"
+CMD_MARK = "rem glidepath launcher"  # the same, in the Windows glidepath.cmd
 CLAUDE_TIMEOUT = 120
 BOM = "\ufeff"
 
@@ -51,7 +52,7 @@ def repo_root():
 
 
 def entry_path():
-    return os.path.join(repo_root(), "bin", "pacer")
+    return os.path.join(repo_root(), "bin", "glidepath")
 
 
 def settings_path(explicit=None):
@@ -197,7 +198,7 @@ def atomic_write(path, data):
     mode = stat.S_IMODE(os.stat(real).st_mode) if os.path.exists(real) else (0o666 & ~_umask())
     # A new name opened exclusively (mkstemp: O_EXCL, 0600), never a link
     # someone left at a name they could guess.
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(real) or ".", prefix=os.path.basename(real) + ".pacer.",
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(real) or ".", prefix=os.path.basename(real) + ".glidepath.",
                                suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as f:
@@ -218,7 +219,7 @@ def make_backup(path):
     """Copy the file's bytes to a new, never-overwritten timestamped backup. The
     time is UTC (a Z marks it): local time can go back (a move west, the fall-back hour)."""
     real = os.path.realpath(path)
-    base = "%s.pacer-backup-%s" % (real, time.strftime("%Y%m%d-%H%M%SZ", time.gmtime()))
+    base = "%s.glidepath-backup-%s" % (real, time.strftime("%Y%m%d-%H%M%SZ", time.gmtime()))
     with open(real, "rb") as f:
         data = f.read()
     for i in range(1000):
@@ -285,8 +286,8 @@ def _kill_tree(p):
 PROBE = ("import sys, sqlite3, json; "
          "print(json.dumps(['%d.%d' % sys.version_info[:2], sqlite3.sqlite_version, sys.executable]))")
 # On Windows the path is the base interpreter's: a venv's python.exe is a launcher that runs its
-# base python.exe as a child. pacer runs -I -S, so a venv adds nothing but that process on every
-# render, and the process hides the shell that started pacer from winshell.parent_shell.
+# base python.exe as a child. glidepath runs -I -S, so a venv adds nothing but that process on every
+# render, and the process hides the shell that started glidepath from winshell.parent_shell.
 WINDOWS_PROBE = PROBE.replace("sys.executable", "getattr(sys, '_base_executable', None) or sys.executable")
 
 
@@ -521,8 +522,8 @@ def _via(note, pin, candidate):
 
 # -- the statusLine command --------------------------------------------------------
 def is_ours(cmd):
-    # "ctempo": written before the rename (legacy.py), rewritten by install.
-    return isinstance(cmd, str) and ("pacer" in cmd or "ctempo" in cmd) and " statusline" in cmd
+    # pacer, ctempo: written under an earlier name (legacy.py), rewritten by install.
+    return isinstance(cmd, str) and any(n in cmd for n in NAMES) and " statusline" in cmd
 
 
 def _path_word(path):
@@ -587,7 +588,7 @@ def command_shell(cmd):
 
 
 def compose_of(cmd):
-    """The composed command embedded in one of our statusLine commands, as pacer statusline
+    """The composed command embedded in one of our statusLine commands, as glidepath statusline
     reads it (statusline.parse_args, over the words after `statusline`): what follows the
     last --compose, or the last --compose-b64 decoded. A repin, doctor and uninstall then
     keep the command that runs, also after a hand edit that added a flag."""
@@ -595,13 +596,13 @@ def compose_of(cmd):
     words = argv[argv.index("statusline") + 1:] if "statusline" in argv else argv
     try:
         return statusline.parse_args(words)["compose_cmd"]
-    except ValueError:  # a --now that is no number: pacer statusline fails open, composing nothing
+    except ValueError:  # a --now that is no number: glidepath statusline fails open, composing nothing
         return None
 
 
 def settings_env(obj=None):
     """The `env` Claude Code lays over its environment for a settings file: the user file's,
-    then that file's own (a project's wins), as far as pacer can read them."""
+    then that file's own (a project's wins), as far as glidepath can read them."""
     env = {}
     try:
         user = read_settings(settings_path(None))[0]
@@ -615,14 +616,14 @@ def settings_env(obj=None):
 
 
 def home_problem(obj=None):
-    """Windows: why pacer refuses the PACER_HOME of the settings env of `obj`,
+    """Windows: why glidepath refuses the GLIDEPATH_HOME of the settings env of `obj`,
     or of this process (config.windows_home), else None. Claude Code passes the
     settings env's value to the statusLine as written, and Git Bash rewrites a
     /x there before python.exe sees it: only here does the raw value show."""
     if not config.IS_WINDOWS:
         return None
     try:
-        config.windows_home(settings_env(obj).get("PACER_HOME"))
+        config.windows_home(settings_env(obj).get("GLIDEPATH_HOME"))
         config.home()
     except config.HomeError as e:
         return str(e)
@@ -644,10 +645,10 @@ def plan_statusline(current, python, entry, replace=False, refresh=60, shell=Non
         want["command"] = our_command(python, entry, compose, shell)
         want.setdefault("refreshInterval", refresh)
         if want == current:
-            return None, "statusLine already runs pacer"
+            return None, "statusLine already runs glidepath"
         if replace and had:
             return want, "REPLACE: drop the composed statusLine command (kept in the backup and in install.json)"
-        return want, "update pacer's statusLine command (interpreter or path changed)"
+        return want, "update glidepath's statusLine command (interpreter or path changed)"
     if isinstance(current, dict) and isinstance(current.get("command"), str) and current["command"].strip():
         if replace:
             return {"type": "command", "command": our_command(python, entry, None, shell), "refreshInterval": refresh}, (
@@ -658,7 +659,7 @@ def plan_statusline(current, python, entry, replace=False, refresh=60, shell=Non
         want["command"] = our_command(python, entry, current["command"], shell)
         theirs = current.get("refreshInterval")
         want["refreshInterval"] = min(refresh, theirs) if isinstance(theirs, (int, float)) and theirs >= 1 else refresh
-        return want, "compose: run your existing statusLine command and append pacer's segment"
+        return want, "compose: run your existing statusLine command and append glidepath's segment"
     return {"type": "command", "command": our_command(python, entry, None, shell), "refreshInterval": refresh}, \
         "add statusLine"
 
@@ -733,18 +734,18 @@ def unmod_commands():
 
 def _user_keys(obj):
     """Which plugin keys the settings hold of their own: one that holds only
-    pacer's entry is the plugin CLI's (its commands were run by hand)."""
+    glidepath's entry is the plugin CLI's (its commands were run by hand)."""
     return {k: k in obj and not (isinstance(obj[k], dict) and list(obj[k]) == [OWN_ENTRY[k]]) for k in PLUGIN_KEYS}
 
 
 # -- launcher ------------------------------------------------------------------------
 def launcher_name():
-    return "pacer.cmd" if config.IS_WINDOWS else "pacer"
+    return "glidepath.cmd" if config.IS_WINDOWS else "glidepath"
 
 
 def launcher_text(python, entry):
     if config.IS_WINDOWS:
-        # For running pacer by hand only: the statusLine and the mod run python.exe itself
+        # For running glidepath by hand only: the statusLine and the mod run python.exe itself
         # (Bun will not start a .cmd without a shell, and cmd.exe parses its arguments again).
         # cmd.exe reads a batch file one line at a time, opening it again by path and offset after
         # each command, and install and uninstall run from here rewrite or delete it. The failing
@@ -759,8 +760,8 @@ def launcher_text(python, entry):
 
 
 def sh_launcher_text(python, entry):
-    """The POSIX sh launcher: the launcher on macOS and Linux, and on Windows the `pacer`
-    beside pacer.cmd that Git Bash runs (forward slashes, -X utf8)."""
+    """The POSIX sh launcher: the launcher on macOS and Linux, and on Windows the `glidepath`
+    beside glidepath.cmd that Git Bash runs (forward slashes, -X utf8)."""
     if config.IS_WINDOWS:
         python, entry = winshell.slashes(python), winshell.slashes(entry)
     return '#!/bin/sh\n%s\nexec %s %s %s "$@"\n' % (
@@ -769,20 +770,20 @@ def sh_launcher_text(python, entry):
 
 def _sh_launcher_path(lp, old_sh, explicit):
     """Windows: the sh launcher to write, or None. Git Bash (and Claude Code's Bash tool, which
-    runs in it) looks a command up by its very name, never with .cmd, so `pacer` there needs a
-    file of that name beside pacer.cmd (lp), as npm's cmd-shim writes. As with pacer.cmd, one
+    runs in it) looks a command up by its very name, never with .cmd, so `glidepath` there needs a
+    file of that name beside glidepath.cmd (lp), as npm's cmd-shim writes. As with glidepath.cmd, one
     the user deleted since an earlier install comes back only with --bin-dir: install.json keeps
-    its record, so every repin leaves it out. One the user kept after deleting pacer.cmd (lp is
-    None), or after putting a file of their own in its place, is still pacer's, so it follows
+    its record, so every repin leaves it out. One the user kept after deleting glidepath.cmd (lp is
+    None), or after putting a file of their own in its place, is still glidepath's, so it follows
     the pin where it is: it never runs an old interpreter."""
     if not config.IS_WINDOWS or (not explicit and old_sh and not os.path.exists(old_sh)):
         return None
-    return os.path.join(os.path.dirname(lp), "pacer") if lp else old_sh
+    return os.path.join(os.path.dirname(lp), "glidepath") if lp else old_sh
 
 
 def _write_sh_launcher(sh, python, entry, state, out):
     """Write the sh launcher at sh, unless a file of the user's is there. Its record follows the
-    file: it names the one just written, and goes for a file of the user's, which pacer never
+    file: it names the one just written, and goes for a file of the user's, which glidepath never
     writes over or removes. True when written."""
     if os.path.exists(sh) and not _is_launcher(sh):
         out("Skipped launcher: %s exists and is not ours" % sh)
@@ -809,7 +810,7 @@ def _launcher_bytes(python, entry):
 
 
 def _is_launcher(path):
-    """The file is a launcher pacer wrote (sh or cmd), not the user's."""
+    """The file is a launcher glidepath wrote (sh or cmd), not the user's."""
     try:
         text = read_text(path)
     except OSError:
@@ -849,7 +850,7 @@ def load_state():
     return state
 
 
-BACKUP_SUFFIX = re.compile(r"\.(?:pacer|ctempo)-backup-\d{8}-\d{6}Z?(-\d+)?$")  # ctempo: before the rename
+BACKUP_SUFFIX = re.compile(r"\.(?:glidepath|pacer|ctempo)-backup-\d{8}-\d{6}Z?(-\d+)?$")  # earlier names too
 
 
 def _v1_key(rec):
@@ -921,13 +922,13 @@ def _backup_order(name):
 
 
 def _original_from_backups(spath):
-    """The statusLine in the newest backup that predates pacer, if any. A command
-    in pacer's --compose in a newer backup (the user put it there, and --replace
+    """The statusLine in the newest backup that predates glidepath, if any. A command
+    in glidepath's --compose in a newer backup (the user put it there, and --replace
     dropped it since) replaces its command, or is the statusLine when no backup
-    predates pacer."""
+    predates glidepath."""
     real = os.path.realpath(spath)
     folder = os.path.dirname(real) or "."
-    prefixes = tuple(os.path.basename(real) + "." + name + "-backup-" for name in ("pacer", "ctempo"))
+    prefixes = tuple(os.path.basename(real) + "." + name + "-backup-" for name in NAMES)
     try:
         names = sorted((n for n in os.listdir(folder) if n.startswith(prefixes) and BACKUP_SUFFIX.search(n)),
                        key=_backup_order, reverse=True)
@@ -957,8 +958,8 @@ def _statusline_part(obj, spath):
     """What install should remember as the original statusLine."""
     current = obj.get("statusLine")
     if isinstance(current, dict) and is_ours(current.get("command")):
-        # Already pacer's (install record lost, or repinned): never record
-        # pacer itself as the original. Prefer a pre-pacer backup, else
+        # Already glidepath's (install record lost, or repinned): never record
+        # glidepath itself as the original. Prefer a pre-glidepath backup, else
         # what --compose says.
         found = _original_from_backups(spath)
         if found is not None:
@@ -971,13 +972,13 @@ def _statusline_part(obj, spath):
 
 
 def _with_compose(rec, cur):
-    """The record with the command in pacer's --compose as the original: the
+    """The record with the command in glidepath's --compose as the original: the
     user may have changed it there, where settings.json shows what runs (D-17)."""
     comp = compose_of(cur["command"]) if isinstance(cur, dict) and isinstance(cur.get("command"), str) else None
     orig = rec.get("original_statusLine")
     if comp and not is_ours(comp) and rec.get("had_statusLine") is False:
-        # No statusLine before pacer, which then composes nothing: the user put it
-        # there. Keep their keys, not the refreshInterval pacer added.
+        # No statusLine before glidepath, which then composes nothing: the user put it
+        # there. Keep their keys, not the refreshInterval glidepath added.
         sl = {k: v for k, v in cur.items() if k != "refreshInterval"}
         return dict(rec, had_statusLine=True, original_statusLine=dict(sl, command=comp))
     if comp and not is_ours(comp) and rec.get("had_statusLine") is True and isinstance(orig, dict) \
@@ -994,17 +995,17 @@ def _shell_notes(cmd, shell, out):
         why = "Git Bash would rewrite the POSIX path it starts with"
         if not winshell.passes_intact(compose_of(cmd) or ""):
             why = "Windows PowerShell 5.1 would pass its double quotes (or final backslash) to Python changed"
-        out("  note: your previous statusLine is stored base64-encoded after %s, since %s; `pacer doctor` shows it "
+        out("  note: your previous statusLine is stored base64-encoded after %s, since %s; `glidepath doctor` shows it "
             "decoded" % (winshell.COMPOSE_B64, why))
     if winshell.reads_alike(cmd):
         return
     out("  warning: this command runs only in %s; after installing or removing Git for Windows, or setting "
-        "CLAUDE_CODE_GIT_BASH_PATH, run `pacer install --apply` again (`pacer doctor` checks this)"
+        "CLAUDE_CODE_GIT_BASH_PATH, run `glidepath install --apply` again (`glidepath doctor` checks this)"
         % winshell.SHELLS[winshell.written_for(cmd) or shell])
     if winshell.getenv(os.environ, "MSYSTEM"):
         # Git Bash puts its own git first on PATH, which can change what Claude Code finds.
         out("  note: Claude Code started from this Git Bash terminal can pick another shell than when started from "
-            "the Desktop app or PowerShell; run `pacer doctor` from PowerShell to check")
+            "the Desktop app or PowerShell; run `glidepath doctor` from PowerShell to check")
 
 
 def install(args, out=print):
@@ -1070,7 +1071,7 @@ def install(args, out=print):
     bin_dir = os.path.abspath(os.path.expanduser(args.bin_dir)) if args.bin_dir else None
     # Without --bin-dir, each launcher an earlier install wrote follows the new pin,
     # and one the user deleted since stays deleted until a --bin-dir. On Windows that
-    # holds for pacer.cmd and the sh launcher for Git Bash beside it, each on its own.
+    # holds for glidepath.cmd and the sh launcher for Git Bash beside it, each on its own.
     prev = load_state()
     old_lp, old_sh = prev.get("launcher"), prev.get("sh_launcher")
     lp = os.path.join(bin_dir if bin_dir else os.path.dirname(old_lp), launcher_name()) \
@@ -1080,7 +1081,12 @@ def install(args, out=print):
         out("Launcher: %s -> %s %s %s" % (lp, python, " ".join(winshell.python_flags()), entry))
     if sh:
         out("Launcher for Git Bash: %s" % sh)
-    out("Runtime info for the mod: %s" % config.runtime_path())
+    from . import legacy
+
+    moving = legacy.pending_move()
+    if moving:
+        out("Data folder: %s -> %s (glidepath was called %s)" % (moving[1], moving[2], moving[0].name))
+    out("Runtime info for the mod: %s" % (os.path.join(moving[2], "runtime.json") if moving else config.runtime_path()))
     if not args.no_bootstrap:
         out("Profile: bootstrap the prior from ~/.claude/projects transcripts (timestamps and token counts only)")
     if not args.apply:
@@ -1090,8 +1096,6 @@ def install(args, out=print):
 
     # Apply. The record goes to disk before the settings file changes, so a
     # crash at any later point still leaves uninstall what it needs.
-    from . import legacy
-
     legacy.move_home(out)  # an install from before the rename keeps its readings
     state = load_state()
     records = state.setdefault("records", {})
@@ -1162,11 +1166,11 @@ def install(args, out=print):
                     state["launcher"] = lp
                     out("Wrote launcher %s" % lp)
                     keep = [lp]
-                    # sh is None on Windows when the user deleted pacer's: its record stays for later repins.
+                    # sh is None on Windows when the user deleted glidepath's: its record stays for later repins.
                     if sh and _write_sh_launcher(sh, python, entry, state, out):
                         keep.append(sh)
-                    # Only the newest launchers are pacer's: those in an earlier --bin-dir go (a pacer
-                    # an older version wrote beside pacer.cmd on Windows is the sh launcher now). The
+                    # Only the newest launchers are glidepath's: those in an earlier --bin-dir go (a glidepath
+                    # an older version wrote beside glidepath.cmd on Windows is the sh launcher now). The
                     # same file under another name (case on macOS, a bind mount) is not one realpath can tell.
                     for old in (old_lp, old_sh):
                         if old and os.path.exists(old) and not any(os.path.samefile(old, k) for k in keep) \
@@ -1176,14 +1180,14 @@ def install(args, out=print):
                 else:
                     out("Skipped launcher: %s exists and is not ours" % lp)
                     if sh and os.path.exists(sh) and _is_launcher(sh):  # with --bin-dir naming its folder too
-                        _write_sh_launcher(sh, python, entry, state, out)  # ours, beside the user's pacer.cmd
+                        _write_sh_launcher(sh, python, entry, state, out)  # ours, beside the user's glidepath.cmd
             except OSError as e:
                 out("Skipped launcher: %s" % e)
                 rc = 1
         else:
             if old_lp:
                 state.pop("launcher", None)  # the user deleted it
-            if sh:  # Windows: the user deleted pacer.cmd and kept the sh launcher, which follows the pin
+            if sh:  # Windows: the user deleted glidepath.cmd and kept the sh launcher, which follows the pin
                 try:
                     _write_sh_launcher(sh, python, entry, state, out)
                 except OSError as e:
@@ -1196,7 +1200,7 @@ def install(args, out=print):
             if not m.get("user_settings") or (m.get("manual") and claude_bin() and not _cli_wrote(m)):
                 # The plugin CLI edits the user settings file: remember
                 # which plugin keys it had, so uninstall can tidy up there.
-                # The mod is manual until pacer sees the plugin CLI write there.
+                # The mod is manual until glidepath sees the plugin CLI write there.
                 us = settings_path(None)
                 try:
                     uobj, uraw, _ = read_settings(us)
@@ -1221,8 +1225,8 @@ def install(args, out=print):
             us = state["mod"]["user_settings"]
             before = _peek(us)
             if claude_bin():
-                if legacy.old_mod_listed(us):
-                    legacy.remove_old_mod(run_claude, out)
+                for old in legacy.old_mods_listed(us):
+                    legacy.remove_old_mod(old, run_claude, out)
                 for c in mod_commands(root):
                     code, so, se = _run_mod_command(c, root, out)
                     if code != 0 and "already" not in (so + se).lower():
@@ -1252,7 +1256,7 @@ def install(args, out=print):
             else:
                 out("No transcripts in the last %s days: the profile starts uniform." % config.load()["profile"]["bootstrap_days"])
         except Exception as e:  # bootstrap is a bonus; never fail the install on it
-            out("Bootstrap skipped: %s (run `pacer bootstrap` later)" % e)
+            out("Bootstrap skipped: %s (run `glidepath bootstrap` later)" % e)
     legacy.move_menubar(out)  # SwiftBar's plugin from before the rename
     out("Done. Restart Claude Code or run /reload-plugins to load the mod; the statusLine applies at once.")
     return rc
@@ -1305,15 +1309,15 @@ def _listed_mod():
     if not _lists_mod(obj):
         return None
     # No snapshot to restore bytes from: tidy by keys, where one that holds only
-    # pacer's entry is the plugin CLI's.
+    # glidepath's entry is the plugin CLI's.
     return {"user_settings": us, "had_file": True, "had_keys": _user_keys(obj)}
 
 
 def _forget_keys(mod, out_of_sight=False):
     """A plugin key the user file no longer holds at all (the user deleted or
     blanked the file since) is not the user's: tidy it away once empty. A key
-    holding only pacer's entry counts as gone only when the plugin CLI wrote
-    it out of pacer's sight (a manual mod whose commands the user ran) and the
+    holding only glidepath's entry counts as gone only when the plugin CLI wrote
+    it out of glidepath's sight (a manual mod whose commands the user ran) and the
     key was not empty at the snapshot: otherwise that is just the user's own
     empty key with the mod in, also after the user added and removed other
     plugins since."""
@@ -1351,7 +1355,7 @@ def _tidy_user_settings(state, mod, skip_real, touched=True):
         return None
     key, rec = find_record(state, us)
     if rec is not None and rec.get("installed"):
-        return None  # pacer's statusLine is still there: its own uninstall restores the file
+        return None  # glidepath's statusLine is still there: its own uninstall restores the file
     if not touched or not os.path.exists(os.path.realpath(us)):
         _drop_records(state, os.path.realpath(us))  # the mod goes, and so does the file's kept record
         return None
@@ -1388,7 +1392,7 @@ def _drop_records(state, real):
 
 
 def uninstall(args, out=print):
-    config.home()  # a PACER_HOME pacer refuses (config.HomeError) stops it before anything changes
+    config.home()  # a GLIDEPATH_HOME glidepath refuses (config.HomeError) stops it before anything changes
     state = load_state()
     records = state.setdefault("records", {})
     if args.settings:
@@ -1396,7 +1400,7 @@ def uninstall(args, out=print):
     else:
         live = installed_records(state)
         if len(live) > 1:
-            out("error: pacer is installed in several settings files; pass --settings one of:")
+            out("error: glidepath is installed in several settings files; pass --settings one of:")
             for p in sorted(live):
                 out("  " + p)
             return 1
@@ -1408,7 +1412,7 @@ def uninstall(args, out=print):
     mod = state.get("mod") or {}
     rebuilt = None if mod else _listed_mod()
     if rebuilt:
-        # install.json was lost (or this is another PACER_HOME), but the user file
+        # install.json was lost (or this is another GLIDEPATH_HOME), but the user file
         # still lists the mod: uninstall removes it all the same (--no-mod keeps it,
         # and runtime.json with it).
         mod = state["mod"] = rebuilt
@@ -1438,7 +1442,7 @@ def uninstall(args, out=print):
     others = [p for p in installed_records(state) if os.path.realpath(p) != real]
     cmds = unmod_commands() if (mod and not args.no_mod and not others) else []
     if rebuilt and cmds:
-        out("  (%s lists the pacer mod, but %s has no record of it: uninstall removes it too)" % (us, state_path()))
+        out("  (%s lists the glidepath mod, but %s has no record of it: uninstall removes it too)" % (us, state_path()))
     for c in cmds:
         out("  claude " + " ".join(c))
     # With claude not on PATH and no trace of the mod in the user file (the
@@ -1450,11 +1454,11 @@ def uninstall(args, out=print):
     # rewrite, unless the commands below write there.
     untouched = bool(cmds and mod.get("manual")) and not _cli_wrote(mod)
     if never_ran:
-        out("  (claude is not on PATH and %s lists no pacer mod: nothing to undo)" % us)
+        out("  (claude is not on PATH and %s lists no glidepath mod: nothing to undo)" % us)
     cur = obj.get("statusLine") if obj else None
     ours = isinstance(cur, dict) and is_ours(cur.get("command"))
     if obj is not None and not ours:
-        out("  statusLine is not pacer's; it is left alone")
+        out("  statusLine is not glidepath's; it is left alone")
     if not args.apply:
         if obj is not None and ours:
             new_obj, new_raw = restore(obj, raw, fmt, rec)
@@ -1500,14 +1504,14 @@ def uninstall(args, out=print):
     rc = 0
     if not installed_records(state):
         if cmds and not mod_ok:
-            out("warning: the plugin commands failed, so the pacer mod may still be installed. "
-                "Run `pacer uninstall --apply` again with claude on PATH, or the commands above yourself.")
+            out("warning: the plugin commands failed, so the glidepath mod may still be installed. "
+                "Run `glidepath uninstall --apply` again with claude on PATH, or the commands above yourself.")
             rc = 1  # keep state["mod"] and runtime.json so a rerun retries
         else:
             if cmds and mod_ok:
                 state.pop("mod", None)
             if state.get("mod"):  # --no-mod: the mod stays, and it reads runtime.json
-                out("Kept the mod (--no-mod) and %s, which it reads; `pacer uninstall --apply` removes both."
+                out("Kept the mod (--no-mod) and %s, which it reads; `glidepath uninstall --apply` removes both."
                     % config.runtime_path())
             else:
                 for key in ("launcher", "sh_launcher"):
@@ -1531,7 +1535,7 @@ def uninstall(args, out=print):
 
 
 def restore(obj, raw, fmt, rec):
-    """Settings with pacer's statusLine undone: (obj, text or bytes), or (obj, None) to delete the file."""
+    """Settings with glidepath's statusLine undone: (obj, text or bytes), or (obj, None) to delete the file."""
     new = dict(obj)
     cur = obj.get("statusLine")
     if isinstance(cur, dict) and is_ours(cur.get("command")):
@@ -1540,7 +1544,7 @@ def restore(obj, raw, fmt, rec):
         usable = rec.get("had_statusLine") is False or (rec.get("had_statusLine") is True and not orig_ours)
         found = None if usable or not rec.get("settings_path") else _original_from_backups(rec["settings_path"])
         if found is not None:
-            # No usable record: rebuild it as install would (a pre-pacer backup), so
+            # No usable record: rebuild it as install would (a pre-glidepath backup), so
             # a command the user put in --compose wins over the backup here too.
             rec = dict(rec, had_statusLine=found[0], original_statusLine=found[1])
         rec = _with_compose(rec, cur)
@@ -1550,7 +1554,7 @@ def restore(obj, raw, fmt, rec):
             new["statusLine"] = orig
         elif rec.get("had_statusLine") is False:
             new.pop("statusLine", None)
-        else:  # no usable record and no backup from before pacer: what the command says
+        else:  # no usable record and no backup from before glidepath: what the command says
             comp = compose_of(cur["command"])
             if comp:
                 new["statusLine"] = dict(cur, command=comp)

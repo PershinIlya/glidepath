@@ -1,4 +1,4 @@
-"""Local time goes through pacer.clock, so the tests pin the zone on every
+"""Local time goes through glidepath.clock, so the tests pin the zone on every
 OS: time.tzset does not exist on Windows, and the process may run in any
 zone. helpers.utc() pins UTC, helpers.zone() an IANA zone."""
 
@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from pacer import clock, profile, render, transcripts
+from glidepath import clock, profile, render, transcripts
 
 from .helpers import MON, H, D, TZ_UTC, utc, zone
 
@@ -44,7 +44,7 @@ class Clock(unittest.TestCase):
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENTRY = os.path.join(ROOT, "bin", "pacer")
+ENTRY = os.path.join(ROOT, "bin", "glidepath")
 JULY = 1784000000  # 2026-07-14 03:33 UTC: US daylight saving is on
 
 
@@ -52,7 +52,7 @@ class WindowsTz(unittest.TestCase):
     """Review 15: Windows' C runtime reads TZ only in its own form (3
     letters, then the hours: EST5EDT, UTC0). An IANA name inherited from a
     Cygwin login shell (TZ=Europe/Berlin) read as zone "Eur", offset 0, with
-    US daylight saving: every local time pacer showed was off. bin/pacer
+    US daylight saving: every local time glidepath showed was off. bin/glidepath
     drops such a TZ and has the C runtime read the zone again."""
 
     def drop(self, tz):
@@ -88,15 +88,15 @@ class WindowsTz(unittest.TestCase):
                     contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 runpy.run_path(ENTRY, run_name="__main__")
             self.assertEqual(fix.call_count, calls, name)
-            self.assertTrue(out.getvalue().startswith("pacer "), out.getvalue())
+            self.assertTrue(out.getvalue().startswith("glidepath "), out.getvalue())
 
     @unittest.skipUnless(os.name == "nt", "Windows' C runtime")
     def test_on_windows_an_iana_tz_reads_as_the_system_zone(self):
-        home = tempfile.mkdtemp(prefix="pacer-tz-")
+        home = tempfile.mkdtemp(prefix="glidepath-tz-")
         self.addCleanup(shutil.rmtree, home, True)
-        base = dict(os.environ, PACER_HOME=home, NO_COLOR="1")
+        base = dict(os.environ, GLIDEPATH_HOME=home, NO_COLOR="1")
         base.pop("TZ", None)  # the system's zone (UTC on CI)
-        hour = ("import sys; sys.path.insert(0, %r); from pacer.clock import windows_tz; windows_tz(); "
+        hour = ("import sys; sys.path.insert(0, %r); from glidepath.clock import windows_tz; windows_tz(); "
                 "import time; print(time.localtime(%d).tm_hour)" % (ROOT, JULY))
         data = json.dumps({"session_id": "s", "rate_limits": {"five_hour": {"used_percentage": 42, "resets_at": JULY}}})
         seen = {}

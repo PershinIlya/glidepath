@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Time `pacer statusline` the way Claude Code runs it: a fresh process per
+"""Time `glidepath statusline` the way Claude Code runs it: a fresh process per
 render, payload on stdin, against a database with weeks of history.
 
     python3 scripts/bench_statusline.py [--runs 50] [--python /usr/bin/python3]
@@ -27,13 +27,13 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, ROOT)
 
-from pacer import clock, config, ingest, profile, winshell  # noqa: E402
-from pacer.store import Store  # noqa: E402
+from glidepath import clock, config, ingest, profile, winshell  # noqa: E402
+from glidepath.store import Store  # noqa: E402
 
 
 def seed(home, now, days=45):
     """Synthetic history: weekday work hours, a reading a minute while active."""
-    os.environ["PACER_HOME"] = home
+    os.environ["GLIDEPATH_HOME"] = home
     cfg = config.load()
     st = Store(os.path.join(home, "tempo.db"))
     rnd = random.Random(7)
@@ -103,7 +103,7 @@ class _Pipe:
 def phases(payload, runs):
     """Where a render's time goes, in this process (no interpreter start): each
     phase over `runs` renders that each record a fresh reading."""
-    from pacer import ingest, pace, profile, statusline, store, weekly
+    from glidepath import ingest, pace, profile, statusline, store, weekly
 
     spent = {}
 
@@ -151,7 +151,7 @@ def phases(payload, runs):
 
 def renders(payload, runs):
     """`runs` renders in this process, each with a fresh reading: their times."""
-    from pacer import statusline
+    from glidepath import statusline
 
     total, saved = [], (sys.stdin, sys.stdout)
     try:
@@ -184,7 +184,7 @@ def main():
             "five_hour": {"used_percentage": 40, "resets_at": int(now + 7200)},
             "seven_day": {"used_percentage": 30, "resets_at": int(now + 3 * 86400)}}}
     else:
-        tmp = home = tempfile.mkdtemp(prefix="pacer-bench-")
+        tmp = home = tempfile.mkdtemp(prefix="glidepath-bench-")
         t = time.time()
         n, rows, fr, fu, wr, wu = seed(home, now)
         print("seeded %d readings -> %d sample rows in %.1fs" % (n, rows, time.time() - t))
@@ -193,8 +193,8 @@ def main():
         payload = {"session_id": "bench", "rate_limits": {
             "five_hour": {"used_percentage": round(fu, 1), "resets_at": int(fr)},
             "seven_day": {"used_percentage": round(wu, 1), "resets_at": int(wr)}}}
-    # The in-process renders (phases) read PACER_HOME from this process too.
-    os.environ["PACER_HOME"] = home
+    # The in-process renders (phases) read GLIDEPATH_HOME from this process too.
+    os.environ["GLIDEPATH_HOME"] = home
     try:
         run_all(a, home, payload)
     finally:
@@ -208,9 +208,9 @@ def run_all(a, home, payload):
     five = payload["rate_limits"]["five_hour"]
     five["used_percentage"] = min(five["used_percentage"], 40.0)
     STEP = min(0.1, 55.0 / (4 * max(a.runs, 1)))
-    env = dict(os.environ, PACER_HOME=home)
+    env = dict(os.environ, GLIDEPATH_HOME=home)
     flags = winshell.python_flags()  # as installed
-    argv = [a.python] + flags + [os.path.join(ROOT, "bin", "pacer"), "statusline"]
+    argv = [a.python] + flags + [os.path.join(ROOT, "bin", "glidepath"), "statusline"]
 
     def series(cmd, fresh):
         times, out = [], b""
@@ -228,7 +228,7 @@ def run_all(a, home, payload):
     print("python: %s" % a.python)
     report("interpreter start", series([a.python] + flags + ["-c", "pass"], False)[0])
     imports = ("import sys; sys.path.insert(0, %r); import json, sqlite3; "
-               "from pacer import config, ingest, pace, profile, render, statusline, store, weekly" % ROOT)
+               "from glidepath import config, ingest, pace, profile, render, statusline, store, weekly" % ROOT)
     report("start and imports", series([a.python] + flags + ["-c", imports], False)[0])
     report("render, no write", series(argv + ["--no-record"], False)[0])
     times, out = series(argv, True)

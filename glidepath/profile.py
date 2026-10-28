@@ -241,7 +241,7 @@ def typical_week(store, now, half_life_s, weeks=8):
 
 
 def current_weights(store, prof, now, cfg):
-    """prof.weights scaled by the typical week (D-13): what the line, `pacer
+    """prof.weights scaled by the typical week (D-13): what the line, `glidepath
     profile` and learning all use."""
     hl = float(cfg["profile"]["half_life_days"]) * 86400
     return prof.weights(now, cfg, typical_week(store, now, hl))

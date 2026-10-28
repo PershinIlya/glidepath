@@ -1,10 +1,10 @@
 // Segment tones of the text line: the classic line's, and the bars line's
-// words and bar parts (pacer/render.py ANSI). An unknown one draws plain.
+// words and bar parts (glidepath/render.py ANSI). An unknown one draws plain.
 export type Tone = string
 
 export type Segment = { text: string; tone: Tone }
 
-// What a window's bar draws (pacer/band.py).
+// What a window's bar draws (glidepath/band.py).
 export type BarKind = 'run' | 'rough' | 'dry' | 'expire' | 'maxed' | 'idle' | 'wait'
 
 // The words after the percent: at most one number, drawn bold.
@@ -65,7 +65,7 @@ export type Win = {
   chart?: Chart | null
 }
 
-// What `pacer statusline --format json` prints, plus the mod's own error.
+// What `glidepath statusline --format json` prints, plus the mod's own error.
 export type View = {
   line: string
   segments: Segment[]
@@ -80,6 +80,6 @@ export type View = {
 
 declare module 'claude-code' {
   interface PluginState {
-    pacer: { view: View | null; details: boolean }
+    glidepath: { view: View | null; details: boolean }
   }
 }

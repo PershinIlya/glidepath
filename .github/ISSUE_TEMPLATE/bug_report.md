@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something pacer shows or does is wrong
+about: Something glidepath shows or does is wrong
 labels: bug
 ---
 
@@ -11,7 +11,7 @@ labels: bug
 
 **Your setup:** OS, `claude --version`, Python version
 
-**`pacer doctor` output** (it prints your statusLine command: remove anything
+**`glidepath doctor` output** (it prints your statusLine command: remove anything
 secret from it first)
 
 ```

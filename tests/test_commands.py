@@ -14,23 +14,23 @@ import time
 import unittest
 from unittest import mock
 
-import pacer
-from pacer import cli, commands, config, install, profile, weekly, winshell
-from pacer.config import SEVEN_DAY
-from pacer.store import Store
+import glidepath
+from glidepath import cli, commands, config, install, profile, weekly, winshell
+from glidepath.config import SEVEN_DAY
+from glidepath.store import Store
 
 from .helpers import MON, H, D, TZ_UTC, TempHome, write_json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENTRY = os.path.join(ROOT, "bin", "pacer")
+ENTRY = os.path.join(ROOT, "bin", "glidepath")
 M = 60.0
 
 
 class Commands(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.home = tempfile.mkdtemp(prefix="pacer-cmd-")
-        cls.env = dict(os.environ, PACER_HOME=cls.home, TZ=TZ_UTC, CLAUDE_CONFIG_DIR=os.path.join(cls.home, "claude"))
+        cls.home = tempfile.mkdtemp(prefix="glidepath-cmd-")
+        cls.env = dict(os.environ, GLIDEPATH_HOME=cls.home, TZ=TZ_UTC, CLAUDE_CONFIG_DIR=os.path.join(cls.home, "claude"))
         cls.env.pop("NO_COLOR", None)
         now = time.time()
         # Two closed 5h windows and one closed week, then the current ones.
@@ -65,7 +65,7 @@ class Commands(unittest.TestCase):
         self.assertIn("5-hour window", out)
         self.assertIn("Weekly window", out)
         json.loads(self.run_cmd("now", "--json"))
-        self.assertIn("5-hour window", self.run_cmd())  # bare pacer = now
+        self.assertIn("5-hour window", self.run_cmd())  # bare glidepath = now
 
     def test_report(self):
         out = self.run_cmd("report", "--days", "30", "-v")
@@ -88,9 +88,9 @@ class Commands(unittest.TestCase):
     def test_doctor_and_config(self):
         settings = os.path.join(self.home, "settings.json")
         with open(settings, "w", encoding="utf-8", newline="") as f:
-            json.dump({"statusLine": {"type": "command", "command": "x/bin/pacer statusline", "refreshInterval": 60}}, f)
+            json.dump({"statusLine": {"type": "command", "command": "x/bin/glidepath statusline", "refreshInterval": 60}}, f)
         out = self.run_cmd("doctor", "--settings", settings, ok=(0, 1))
-        self.assertIn("statusLine runs pacer", out)
+        self.assertIn("statusLine runs glidepath", out)
         self.assertIn("database", out)
         json.loads(self.run_cmd("doctor", "--json", "--settings", settings, ok=(0, 1)))
         self.assertIn("target_5h", self.run_cmd("config"))
@@ -209,7 +209,7 @@ class ProfileText(TempHome):
 
     def test_the_prior_line_shows_its_age_and_weight_now(self):
         # Review 9 (delta-weekly#3): the transcript prior fades with the
-        # half-life from its build (D-14), but `pacer profile` printed the
+        # half-life from its build (D-14), but `glidepath profile` printed the
         # trust from build time for good: "trusted 100%" 8 weeks on, when it
         # weighed 6% of that.
         prof = profile.load(self.st)
@@ -220,11 +220,11 @@ class ProfileText(TempHome):
         self.assertIn("Prior: transcripts, 45.0 days, 1782 messages, 296 active hours, "
                       "trusted 100% when built (full at 14 days)\n", out)
         self.assertIn("  built 28d 00h ago, weight now 25% (it halves every 14 days; "
-                      "`pacer bootstrap` builds a fresh one)\n", out)
+                      "`glidepath bootstrap` builds a fresh one)\n", out)
 
     def test_an_override_leaves_the_prior_unused(self):
         # Review 10: under profile.override the transcript prior has no weight
-        # (Profile.rates takes the override), but `pacer profile` printed its
+        # (Profile.rates takes the override), but `glidepath profile` printed its
         # faded weight, 78% five days on.
         prof = profile.load(self.st)
         prof.prior = profile.uniform()
@@ -237,18 +237,18 @@ class ProfileText(TempHome):
 
     def test_an_override_is_the_prior_when_there_is_no_transcript_prior(self):
         # Review 11: with profile.override set and no transcript prior,
-        # `pacer profile` still said "run `pacer bootstrap`", whose prior the
+        # `glidepath profile` still said "run `glidepath bootstrap`", whose prior the
         # override would leave unused.
         self.cfg["profile"]["override"] = {"work_days": [0, 1, 2, 3, 4], "wake_hours": [8, 23], "off_day_factor": 0.5, "mode": "prior"}
         out = self.profile(MON + 5 * D)
         self.assertIn("Prior: profile.override (work days Mon,Tue,Wed,Thu,Fri, wake 8-23, mode prior)\n", out)
-        self.assertNotIn("run `pacer bootstrap`", out)
+        self.assertNotIn("run `glidepath bootstrap`", out)
 
     def test_doctor_takes_an_override_for_the_prior(self):
-        # Review 11: doctor warned "no transcript prior, run `pacer bootstrap`"
+        # Review 11: doctor warned "no transcript prior, run `glidepath bootstrap`"
         # under profile.override, which leaves such a prior unused.
         self.cfg["profile"]["override"] = {"work_days": [0, 1, 2, 3, 4], "wake_hours": [8, 23], "off_day_factor": 0.5, "mode": "prior"}
-        from pacer import install
+        from glidepath import install
 
         out = io.StringIO()
         with contextlib.redirect_stdout(out), mock.patch.object(install, "claude_bin", lambda: None):
@@ -258,9 +258,9 @@ class ProfileText(TempHome):
 
     def test_mode_replace_leaves_learned_hours_unused(self):
         # Review 12: under profile.override mode replace the profile is the
-        # override's shape alone, but `pacer profile` and doctor said the
+        # override's shape alone, but `glidepath profile` and doctor said the
         # learned hours were "folded in".
-        from pacer import install
+        from glidepath import install
 
         prof = profile.load(self.st)
         prof.observe(MON + 10 * H, 1.0, 1.0, 14 * D)
@@ -292,7 +292,7 @@ class ProfileText(TempHome):
         out = self.profile()
         self.assertIn("reset -1\n", out)
         self.assertIn("(negative = surplus building up; the reset column is the peak versus your 90% target; "
-                      "`pacer report` shows what expired)", out)
+                      "`glidepath report` shows what expired)", out)
 
     def test_lightest_awake_blocks_are_awake(self):
         # Review 8 (mod-and-texts#2): a block counted as awake on its weight
@@ -308,7 +308,7 @@ class ProfileText(TempHome):
 
 
 class NowText(TempHome):
-    """Review 5: `pacer now` gives the reasoning behind every number, so
+    """Review 5: `glidepath now` gives the reasoning behind every number, so
     its reasons and its data age must be the ones that apply."""
 
     def now(self, now, as_json=False):
@@ -411,7 +411,7 @@ class NowText(TempHome):
 
 class ProfileScale(TempHome):
     def test_profile_uses_the_lines_weekly_total(self):
-        # Review 5 (X-integration#3): `pacer profile` (and --rebuild) built its
+        # Review 5 (X-integration#3): `glidepath profile` (and --rebuild) built its
         # weights without the typical week (D-13). After a closed week that
         # peaked at 70%, learned only from its 10 busiest hours at 1 %/h, it
         # took the ratio estimate, 10 / (10/168) = 168, and printed "typical
@@ -435,25 +435,25 @@ class ProfileScale(TempHome):
 
 
 class RunAsFolder(TempHome):
-    """`py pacer ...` from the clone runs the package folder as a script
-    (a user typed it on Windows): it works as bin/pacer does, with no
+    """`py glidepath ...` from the clone runs the package folder as a script
+    (a user typed it on Windows): it works as bin/glidepath does, with no
     warning, and the folder's config.py and profile.py never shadow the
     standard library's."""
 
     def run_folder(self, folder, *args):
-        env = dict(os.environ, PACER_HOME=self.dir)
+        env = dict(os.environ, GLIDEPATH_HOME=self.dir)
         return subprocess.run([sys.executable, "-W", "error", folder] + list(args), cwd=ROOT, env=env,
                               capture_output=True, text=True, timeout=60)
 
     def test_relative_and_absolute(self):
-        for folder in ("pacer", os.path.join(ROOT, "pacer")):
+        for folder in ("glidepath", os.path.join(ROOT, "glidepath")):
             p = self.run_folder(folder, "--version")
-            self.assertEqual((p.returncode, p.stdout.strip(), p.stderr), (0, "pacer " + pacer.__version__, ""), folder)
+            self.assertEqual((p.returncode, p.stdout.strip(), p.stderr), (0, "glidepath " + glidepath.__version__, ""), folder)
             p = self.run_folder(folder, "config", "path")
             self.assertEqual((p.returncode, p.stdout.strip()), (0, config.config_path()), folder)
 
     def test_the_exit_code_passes_through(self):
-        self.assertEqual(self.run_folder("pacer", "no-such-command").returncode, 2)
+        self.assertEqual(self.run_folder("glidepath", "no-such-command").returncode, 2)
 
 
 class Utf8Output(unittest.TestCase):
@@ -493,9 +493,9 @@ class DoctorCase(unittest.TestCase):
     GIT_BASH = r"C:\Program Files\Git\bin\bash.exe"
 
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="pacer-doctor-")
+        self.dir = tempfile.mkdtemp(prefix="glidepath-doctor-")
         self.addCleanup(shutil.rmtree, self.dir, True)
-        env = mock.patch.dict(os.environ, {"PACER_HOME": self.dir, "CLAUDE_CONFIG_DIR": os.path.join(self.dir, "claude")})
+        env = mock.patch.dict(os.environ, {"GLIDEPATH_HOME": self.dir, "CLAUDE_CONFIG_DIR": os.path.join(self.dir, "claude")})
         env.start()
         self.addCleanup(env.stop)
         os.environ.pop("MSYSTEM", None)  # doctor in a Git Bash terminal says more (DoctorFromGitBash)
@@ -543,17 +543,17 @@ class DoctorModLog(DoctorCase):
 class DoctorShell(DoctorCase):
     """Windows: Claude Code runs the statusLine in Git Bash when it finds one,
     else in PowerShell, and that can change after install (Git for Windows
-    installed or removed). doctor names the shell and warns when pacer's
+    installed or removed). doctor names the shell and warns when glidepath's
     command was written for the other one. Patched to run on any OS; macOS and
     Linux show no such line."""
 
-    QUOTED = "'C:/Program Files/Python312/python.exe' -I -S -X utf8 C:/repo/bin/pacer statusline"
-    BARE = "C:/Python312/python.exe -I -S -X utf8 C:/repo/bin/pacer statusline"
+    QUOTED = "'C:/Program Files/Python312/python.exe' -I -S -X utf8 C:/repo/bin/glidepath statusline"
+    BARE = "C:/Python312/python.exe -I -S -X utf8 C:/repo/bin/glidepath statusline"
 
     def test_a_command_for_git_bash_when_powershell_would_run_it(self):
         out = self.doctor(self.QUOTED, recorded="bash")
         self.assertIn("WARN statusLine command is written for Git Bash, but Claude Code would run it in PowerShell"
-                      "  (run `pacer install --apply` to rewrite it (%s))" % self.PS51, out)
+                      "  (run `glidepath install --apply` to rewrite it (%s))" % self.PS51, out)
         out = self.doctor(self.QUOTED, recorded="bash", predicted=("bash", self.GIT_BASH))
         self.assertIn("ok   statusLine shell: Git Bash  (%s)" % self.GIT_BASH, out)
         self.assertNotIn("written for", out)
@@ -594,7 +594,7 @@ class DoctorFromGitBash(DoctorCase):
 
     QUOTED, BARE = DoctorShell.QUOTED, DoctorShell.BARE
     NOTE = ("; checked from Git Bash, so Claude Code started from the Desktop app or PowerShell may pick another shell: "
-            "run `pacer doctor` from PowerShell to check")
+            "run `glidepath doctor` from PowerShell to check")
 
     def git_bash_doctor(self, *a, **kw):
         with mock.patch.dict(os.environ, {"MSYSTEM": "MINGW64"}):
@@ -619,8 +619,8 @@ class DoctorEncodedCompose(DoctorCase):
     as plain text that Windows PowerShell 5.1 or Git Bash would change."""
 
     BARE = DoctorShell.BARE
-    REPIN = ("WARN your previous statusLine can reach pacer changed in Windows PowerShell 5.1 or Git Bash  "
-             "(run `pacer install --apply` to store it encoded)")
+    REPIN = ("WARN your previous statusLine can reach glidepath changed in Windows PowerShell 5.1 or Git Bash  "
+             "(run `glidepath install --apply` to store it encoded)")
 
     def test_shown_decoded(self):
         old = 'node "C:/Users/John Smith/sl.js"'
@@ -637,7 +637,7 @@ class DoctorEncodedCompose(DoctorCase):
             self.assertNotIn("store it encoded", self.doctor(self.BARE + " --compose '%s'" % old))
 
     def test_the_flag_that_runs_decides(self):
-        # Review 15 verify: doctor read the first --compose, while pacer statusline, compose_of
+        # Review 15 verify: doctor read the first --compose, while glidepath statusline, compose_of
         # and a repin take the last flag, so it missed an at-risk command that runs and warned
         # about one that does not.
         risky = 'node "C:/Users/John Smith/sl.js"'

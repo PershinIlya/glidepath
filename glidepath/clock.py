@@ -1,6 +1,6 @@
 """Local time, in one place.
 
-Everything pacer reads in local time (hour-of-week bins and local hours,
+Everything glidepath reads in local time (hour-of-week bins and local hours,
 reset clocks on the line, active days in the transcripts, the error log's
 time stamps) goes through `localtime`, which is the time module's, so the
 zone is the process's own. Tests pin a zone by replacing it, on every OS:
@@ -26,10 +26,10 @@ def windows_tz(environ=None, tzset=None):
     The C runtime reads TZ whenever it is set, in its own form only: 3
     letters, then the hours (EST5EDT, UTC0, GST-1GDT). An IANA name (a
     Cygwin login shell exports TZ=Europe/Berlin) reads as zone "Eur" at
-    offset 0 with US daylight saving, and every local time pacer shows
-    is off. The C runtime has read TZ by the time pacer runs (zipimport
+    offset 0 with US daylight saving, and every local time glidepath shows
+    is off. The C runtime has read TZ by the time glidepath runs (zipimport
     imports the time module at startup), so its _tzset runs again once TZ
-    is gone. bin/pacer calls this before anything reads local time."""
+    is gone. bin/glidepath calls this before anything reads local time."""
     environ = os.environ if environ is None else environ
     tz = environ.get("TZ")
     if not tz:

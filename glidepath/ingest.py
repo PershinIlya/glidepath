@@ -276,7 +276,7 @@ def _record_one(store, w, used, reset, now, source, session_id, cfg):
     dropped = used <= inst["max_used"] - drop_pts
     if shifted or dropped:
         if not fresh or first_seen:
-            # An idle session re-reporting an old window, or one pacer has
+            # An idle session re-reporting an old window, or one glidepath has
             # never heard from (e.g. every open session re-renders when the
             # statusLine is installed): its first word cannot count as news.
             return "stale"

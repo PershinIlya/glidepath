@@ -1,8 +1,8 @@
 import unittest
 
-from pacer import commands, ingest, pace
-from pacer.config import FIVE_HOUR, SEVEN_DAY
-from pacer.store import ANOMALY, FIRST, FRESH, HEARTBEAT
+from glidepath import commands, ingest, pace
+from glidepath.config import FIVE_HOUR, SEVEN_DAY
+from glidepath.store import ANOMALY, FIRST, FRESH, HEARTBEAT
 
 from .helpers import MON, H, D, TempHome
 
@@ -550,9 +550,9 @@ class Record(TempHome):
         self.feed(R + 600, week=(36, moved), sid="s2")
         self.assertEqual(commands._closed(self.st, SEVEN_DAY, MON), [])
 
-    def test_idle_twins_of_two_sessions_cannot_reopen_a_week_pacer_never_saw(self):
+    def test_idle_twins_of_two_sessions_cannot_reopen_a_week_glidepath_never_saw(self):
         # Review 13 (fuzz#3): at install, the idle twins of 2 sessions still
-        # showed a week that had ended early before pacer saw it (its reset
+        # showed a week that had ended early before glidepath saw it (its reset
         # is still ahead, so the readings pass). Each was its session's first
         # change, so neither was known as a replay, and the 2 made the
         # drop_samples run that put the line on the dead week at 78%.
@@ -655,7 +655,7 @@ class Record(TempHome):
 
     def test_an_unknown_earlier_reset_far_above_the_max_still_takes_drop_samples(self):
         # Review 13: the one-reading move earlier asks for about the same
-        # level. An idle twin's reading of a week pacer never saw (it ended
+        # level. An idle twin's reading of a week glidepath never saw (it ended
         # by an early reset before install) carries an earlier reset no
         # window had, far above the open window: it must not open on its own.
         t = MON + 2 * D
@@ -666,7 +666,7 @@ class Record(TempHome):
         self.assertEqual(self.st.open_instance(SEVEN_DAY)["reset_ts"], r2)
 
     def test_first_words_of_unknown_sessions_cannot_fake_a_reset(self):
-        # pacer is installed while three sessions are open: every one
+        # glidepath is installed while three sessions are open: every one
         # re-renders at once; two idle ones carry an old, much lower value.
         t = MON + D
         self.feed(t, week=(60, self.R7), sid="busy")

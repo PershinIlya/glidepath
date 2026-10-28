@@ -190,7 +190,7 @@ def five_hour(store, now, cfg, reading=None):
     v["known_ts"] = max(at) if at else None
     v["last_seen"] = inst["last_seen"]
     v["rate_points"] = len(inside) + 2
-    v["rate_since"] = since  # the fit start: `pacer now` names why there is no rate
+    v["rate_since"] = since  # the fit start: `glidepath now` names why there is no rate
 
     allowed = max(0.0, tgt - used) / rem_h if rem_h > 0 else 0.0
     v["allowed"] = allowed

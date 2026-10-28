@@ -1,9 +1,9 @@
 """Paths and configuration.
 
-Everything lives under PACER_HOME (default ~/.pacer; `~` is expanded
+Everything lives under GLIDEPATH_HOME (default ~/.glidepath; `~` is expanded
 and a relative value is taken from the home directory). The config file is
 optional: missing keys fall back to DEFAULTS, unknown keys are kept so a
-newer config does not break an older pacer.
+newer config does not break an older glidepath.
 """
 
 import copy
@@ -42,7 +42,7 @@ DEFAULTS = {
     # faster, < slow_down means you will overshoot the target.
     "verdict": {"speed_up": 1.2, "slow_down": 0.9},
     # A window is "in its tail" this close to its reset (used by colors and
-    # by `pacer check`).
+    # by `glidepath check`).
     "tail": {"five_hour_min": 60, "seven_day_hours": 48},
     # Points of projected surplus that count as worth harvesting.
     "min_free": 10.0,
@@ -90,9 +90,9 @@ DEFAULTS = {
     "mod": {"surfaces": ["desktop"], "refresh_s": 60},
     # Every this many minutes the menu bar or a Desktop band asks Claude
     # Code's own /usage for the account's levels, so work in chats, cloud
-    # sessions or on another computer shows too (0: never; `pacer fetch`).
+    # sessions or on another computer shows too (0: never; `glidepath fetch`).
     "fetch_usage_min": 0,
-    # The macOS menu bar (pacer menubar).
+    # The macOS menu bar (glidepath menubar).
     # notify: a macOS notification when a limit will run out or is reached,
     # or quota will go unused (once per window).
     # style: "bars" draws the bars as pictures, "text" as plain text.
@@ -106,7 +106,7 @@ DEFAULTS = {
 
 
 def private_dir(d):
-    """Make the folder `d` (and its parents) as pacer's own: only the user
+    """Make the folder `d` (and its parents) as glidepath's own: only the user
     reads a new one (its records hold earlier statusLine commands, session
     ids). An existing folder is left as it is."""
     if d:
@@ -138,16 +138,30 @@ def which(name, path=None):
     return found
 
 
+ENV, DIR = "GLIDEPATH_HOME", ".glidepath"
+# The earlier names' variables and folders (pacer, then ctempo), newest first:
+# read until `glidepath install --apply` moves them (legacy.py).
+OLD_ENVS = ("PACER_HOME", "CTEMPO_HOME")
+OLD_DIRS = (".pacer", ".claude-tempo")
+
+
+def _default_home(join, user):
+    """The new folder, or an old one while the new one does not exist."""
+    new = join(user, DIR)
+    if not os.path.exists(new):
+        for name in OLD_DIRS:
+            old = join(user, name)
+            if os.path.isdir(old):
+                return old
+    return new
+
+
 def home():
-    # CTEMPO_HOME and ~/.claude-tempo: installs from before the rename, until
-    # `pacer install --apply` moves them (legacy.py).
-    value = os.environ.get("PACER_HOME") or os.environ.get("CTEMPO_HOME")
+    value = next((v for v in (os.environ.get(k) for k in (ENV,) + OLD_ENVS) if v), None)
     if IS_WINDOWS:
         return windows_home(value)
     if not value:
-        new = os.path.join(os.path.expanduser("~"), ".pacer")
-        old = os.path.join(os.path.expanduser("~"), ".claude-tempo")
-        return old if not os.path.exists(new) and os.path.isdir(old) else new
+        return _default_home(os.path.join, os.path.expanduser("~"))
     # Claude Code copies settings.json `env` values as written: expand `~`
     # here, and take a relative path from the home directory, never from the
     # session's cwd (each project would get a database of its own).
@@ -155,7 +169,7 @@ def home():
 
 
 class HomeError(ValueError):
-    """A PACER_HOME pacer refuses (Windows: see windows_home)."""
+    """A GLIDEPATH_HOME glidepath refuses (Windows: see windows_home)."""
 
 
 def windows_home(value):
@@ -178,16 +192,15 @@ def windows_home(value):
 
     user = ntpath.expanduser("~")
     if not value:
-        new, old = ntpath.join(user, ".pacer"), ntpath.join(user, ".claude-tempo")
-        return old if not os.path.exists(new) and os.path.isdir(old) else new
+        return _default_home(ntpath.join, user)
     if value[:1] == "/" and value[1:2].isalpha() and value[1:2].isascii() and value[2:3] in ("", "/"):
         value = value[1].upper() + ":/" + value[3:]
     elif value[:1] == "/" and value[1:2] not in ("/", "\\"):
-        raise HomeError("PACER_HOME %s has no drive; Git Bash rewrites such a path to a folder under its own "
+        raise HomeError("GLIDEPATH_HOME %s has no drive; Git Bash rewrites such a path to a folder under its own "
                         "install. Write it with a drive, e.g. %s%s, or as ~/..."
                         % (value, ntpath.splitdrive(user)[0] or "C:", value))
     if value[:1].isalpha() and value[:1].isascii() and value[1:2] == ":" and value[2:3] not in ("/", "\\"):
-        raise HomeError("PACER_HOME %s is relative to a drive's current folder; use an absolute path" % value)
+        raise HomeError("GLIDEPATH_HOME %s is relative to a drive's current folder; use an absolute path" % value)
     return ntpath.normpath(ntpath.join(user, ntpath.expanduser(value)))
 
 

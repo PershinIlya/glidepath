@@ -4,9 +4,9 @@ import json
 import os
 import unittest
 
-from pacer import config, pace, render
-from pacer.config import FIVE_HOUR
-from pacer.store import Store
+from glidepath import config, pace, render
+from glidepath.config import FIVE_HOUR
+from glidepath.store import Store
 
 from .helpers import MON, H, TempHome
 

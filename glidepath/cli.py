@@ -1,5 +1,5 @@
 """Argument parsing and dispatch. `statusline` is dispatched before this
-module loads (see bin/pacer) so the hot path skips argparse."""
+module loads (see bin/glidepath) so the hot path skips argparse."""
 
 import argparse
 import sys
@@ -8,8 +8,8 @@ from . import __version__, config
 
 
 def build_parser():
-    p = argparse.ArgumentParser(prog="pacer", description="Claude usage pace monitor (5-hour and weekly windows).")
-    p.add_argument("--version", action="version", version="pacer " + __version__)
+    p = argparse.ArgumentParser(prog="glidepath", description="Claude usage pace monitor (5-hour and weekly windows).")
+    p.add_argument("--version", action="version", version="glidepath " + __version__)
     sub = p.add_subparsers(dest="cmd")
 
     s = sub.add_parser("statusline", help="read the statusLine payload on stdin, record it, print the line")
@@ -46,7 +46,7 @@ def build_parser():
         if name == "install":
             s.add_argument("--python", default=None, help="absolute interpreter path to pin")
             s.add_argument("--replace", action="store_true", help="replace an existing statusLine instead of composing")
-            s.add_argument("--bin-dir", default=None, help="also write a `pacer` launcher here, e.g. ~/.local/bin")
+            s.add_argument("--bin-dir", default=None, help="also write a `glidepath` launcher here, e.g. ~/.local/bin")
             s.add_argument("--no-bootstrap", action="store_true", help="skip building the profile prior from transcripts")
 
     s = sub.add_parser("doctor", help="check interpreter, database, settings, mod, sample age")
@@ -57,7 +57,7 @@ def build_parser():
     s.add_argument("--install", nargs="?", const="", default=None, metavar="FOLDER",
                    help="write the SwiftBar plugin (default: the plugin folder SwiftBar uses)")
     s.add_argument("--uninstall", nargs="?", const="", default=None, metavar="FOLDER", help="remove it")
-    s.add_argument("--fetch", type=float, default=None, metavar="MIN", help="the same as `pacer fetch --every MIN`")
+    s.add_argument("--fetch", type=float, default=None, metavar="MIN", help="the same as `glidepath fetch --every MIN`")
 
     s = sub.add_parser("fetch", help="ask Claude Code's /usage for the account's levels and record them")
     s.add_argument("--every", type=float, default=None, metavar="MIN",
@@ -149,8 +149,8 @@ def main(argv):
 
 
 def refused(e):
-    """A PACER_HOME pacer refuses (config.HomeError): the reason, no traceback."""
-    print("pacer: %s" % e, file=sys.stderr)
+    """A GLIDEPATH_HOME glidepath refuses (config.HomeError): the reason, no traceback."""
+    print("glidepath: %s" % e, file=sys.stderr)
     return 1
 
 

@@ -2,7 +2,7 @@ import os
 import sys
 
 if not __package__:
-    # Run as a folder (`py pacer`, not `py -m pacer` or bin/pacer): Python
+    # Run as a folder (`py glidepath`, not `py -m glidepath` or bin/glidepath): Python
     # put this folder first on the path, where config.py and profile.py would
     # shadow the standard library's, and relative imports have no package.
     # Import the package from the folder above instead.
@@ -11,10 +11,10 @@ if not __package__:
     sys.path.insert(0, os.path.dirname(_here))
     import runpy
 
-    runpy.run_module("pacer", run_name="__main__", alter_sys=True)  # exits with pacer's code
+    runpy.run_module("glidepath", run_name="__main__", alter_sys=True)  # exits with glidepath's code
     sys.exit(0)
 
-if os.name == "nt":  # as in bin/pacer: a TZ the C runtime misreads goes first
+if os.name == "nt":  # as in bin/glidepath: a TZ the C runtime misreads goes first
     from .clock import windows_tz
 
     windows_tz()

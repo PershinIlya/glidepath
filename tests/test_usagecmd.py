@@ -1,4 +1,4 @@
-"""Readings from Claude Code's /usage (pacer/usagecmd.py)."""
+"""Readings from Claude Code's /usage (glidepath/usagecmd.py)."""
 
 import contextlib
 import io
@@ -8,7 +8,7 @@ import subprocess
 import unittest
 from unittest import mock
 
-from pacer import config, menubar, usagecmd
+from glidepath import config, menubar, usagecmd
 
 from .helpers import TempHome, _zone_info
 
@@ -133,25 +133,25 @@ class MenuBar(TempHome):
 
 
 class Background(TempHome):
-    """A Desktop band (statusline --source mod) starts `pacer fetch` in the
+    """A Desktop band (statusline --source mod) starts `glidepath fetch` in the
     background when one is due, and never waits for it."""
 
     def test_spawn_when_due_only(self):
         started = []
         popen = lambda cmd, **kw: started.append((cmd, kw))  # noqa: E731
         cfg = dict(self.cfg, fetch_usage_min=10)
-        rt = ("/py", ["-I", "-S"], "/repo/bin/pacer")
+        rt = ("/py", ["-I", "-S"], "/repo/bin/glidepath")
         self.assertTrue(usagecmd.spawn(self.st, NOW, cfg, rt, popen))
         self.assertFalse(usagecmd.spawn(self.st, NOW + 300, cfg, rt, popen))  # 5 min later: not yet
         self.assertFalse(usagecmd.spawn(self.st, NOW + 900, dict(cfg, fetch_usage_min=0), rt, popen))
         self.assertEqual(len(started), 1)
         cmd, kw = started[0]
-        self.assertEqual(cmd, ["/py", "-I", "-S", "/repo/bin/pacer", "fetch"])
+        self.assertEqual(cmd, ["/py", "-I", "-S", "/repo/bin/glidepath", "fetch"])
         self.assertIs(kw["stdout"], subprocess.DEVNULL)
-        self.assertEqual(kw["env"]["PACER_HOME"], config.home())
+        self.assertEqual(kw["env"]["GLIDEPATH_HOME"], config.home())
 
     def test_the_mod_run_spawns_and_the_terminal_does_not(self):
-        from pacer import statusline
+        from glidepath import statusline
 
         cfg = dict(self.cfg, fetch_usage_min=10)
         self.st.close()

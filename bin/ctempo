@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""pacer was called ctempo: statusLine commands, SwiftBar plugins and launchers
-written before the rename run this file. It runs pacer; `pacer install
---apply` rewrites them to bin/pacer (pacer/legacy.py)."""
+"""glidepath was called ctempo: statusLine commands, SwiftBar plugins and launchers
+written before the rename run this file. It runs glidepath; `glidepath install
+--apply` rewrites them to bin/glidepath (glidepath/legacy.py)."""
 import os
 import runpy
 
-runpy.run_path(os.path.join(os.path.dirname(os.path.realpath(__file__)), "pacer"), run_name="__main__")
+runpy.run_path(os.path.join(os.path.dirname(os.path.realpath(__file__)), "glidepath"), run_name="__main__")

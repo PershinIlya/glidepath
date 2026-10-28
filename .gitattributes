@@ -4,7 +4,8 @@
 # file run through its #! line breaks with a CR there ("python3\r: not
 # found" in Git Bash), so the launcher, the Python sources and any shell
 # script keep LF on every checkout.
-bin/pacer text eol=lf
+bin/glidepath text eol=lf
 bin/ctempo text eol=lf
+bin/pacer text eol=lf
 *.py text eol=lf
 *.sh text eol=lf

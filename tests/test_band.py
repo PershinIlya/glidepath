@@ -1,10 +1,10 @@
-"""The band: bars, words and the terminal line (pacer/band.py)."""
+"""The band: bars, words and the terminal line (glidepath/band.py)."""
 
 import json
 import os
 import unittest
 
-from pacer import band, config, render, statusline
+from glidepath import band, config, render, statusline
 
 from .helpers import MON, H, D, TempHome, payload, utc
 
@@ -313,7 +313,7 @@ class TerminalLine(unittest.TestCase):
 
 
 class Stamp(TempHome):
-    """A reading that changes what is shown touches PACER_HOME/changed, so
+    """A reading that changes what is shown touches GLIDEPATH_HOME/changed, so
     a band in another chat redraws within seconds; a heartbeat does not."""
 
     def render(self, now, five, week=(30, int(MON + 5 * D)), sid="s1"):
@@ -356,7 +356,7 @@ if __name__ == "__main__":
 
 class EndedWindow(TempHome):
     def test_the_store_says_when_the_last_window_ended(self):
-        from pacer import pace
+        from glidepath import pace
 
         r5 = int(MON + 4 * H)
         self.known("s1")
@@ -391,7 +391,7 @@ class RunsOutLater(unittest.TestCase):
 
 class RunsOutLaterViews(TempHome):
     def test_the_views_have_it(self):
-        from pacer import commands
+        from glidepath import commands
 
         self.known("s1")
         r5 = int(MON + 16 * H + 30 * 60)

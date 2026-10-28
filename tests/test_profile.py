@@ -3,9 +3,9 @@ import os
 import time
 import unittest
 
-from pacer import clock, config, profile
-from pacer.config import SEVEN_DAY
-from pacer.store import FIRST
+from glidepath import clock, config, profile
+from glidepath.config import SEVEN_DAY
+from glidepath.store import FIRST
 
 from .helpers import MON, H, D, TempHome, utc, zone
 
@@ -164,8 +164,8 @@ class LearnEdges(TempHome):
         self.assertAlmostEqual(prof.S[b] / prof.W[b], 1.0, places=6)
 
     def test_learning_keeps_a_prior_committed_after_the_profile_was_read(self):
-        from pacer import statusline
-        from pacer.store import Store
+        from glidepath import statusline
+        from glidepath.store import Store
 
         self.feed(MON + H, week=(5, int(MON + 7 * D)))
         stale = profile.load(self.st)  # what a render read before learning
@@ -199,8 +199,8 @@ class LearnEdges(TempHome):
         # old window peaks at 12.5 (less than drop_points). The new window's
         # 0.25 is not "about the same level", so it counts from 0 when learned
         # in one batch (profile --rebuild) too, not as 0 until it passes 12.5.
-        from pacer import ingest
-        from pacer.store import Store
+        from glidepath import ingest
+        from glidepath.store import Store
 
         R = int(MON + 4 * D + 2 * H)  # resets Friday
         t = MON + 2 * D + 12 * H  # Wednesday 12:00, at 10% and climbing 1 point an hour
@@ -230,7 +230,7 @@ class LearnEdges(TempHome):
         # no reading comes: that tail of the old window was never learned, so
         # the weekend kept the average rate for good. It counted 63 awake
         # hours more, the typical week read 90% and Wednesday projected 83%.
-        from pacer import weekly
+        from glidepath import weekly
 
         R0 = int(MON + 9 * H)
         now = MON + 44 * D + 12 * H  # Wednesday 12:00 of week 7
@@ -251,7 +251,7 @@ class LearnEdges(TempHome):
         # until the Thursday 09:00 reset. Blocked hours say nothing of the
         # habit: learned as idle by the rule above, they left the profile
         # without Wednesday, and Monday 11:00 at 63% read "on pace".
-        from pacer import weekly
+        from glidepath import weekly
 
         R0 = int(MON + 3 * D + 9 * H)
         now = R0 + 25 * D + 2 * H  # Monday 11:00, after three capped weeks
@@ -270,7 +270,7 @@ class LearnEdges(TempHome):
         # session's FIRST reading. Learning judged the cap by FRESH readings
         # only, so it learned the blocked hours as idle (the lookback counts
         # that cap, D-15), and Monday 11:00 at 63% read "on pace" again.
-        from pacer import weekly
+        from glidepath import weekly
 
         feed = self.feed
 
@@ -332,7 +332,7 @@ class LearnEdges(TempHome):
         # The idle mornings are only seen through overnight gaps, learned at
         # low confidence and spread by the prior's own shape, so the prior
         # kept Mon-Fri 9-13 at 20% of the week and 70 awake hours for good.
-        from pacer import transcripts
+        from glidepath import transcripts
 
         T0 = int(MON + 3 * D + 10 * H)  # installed Thursday 10:00, the weekly reset
         day0 = MON - 42 * D  # a Monday more than 45 days before
@@ -352,8 +352,8 @@ class LearnEdges(TempHome):
         self.assertEqual(info["source"], "transcripts+observed")
 
     def test_batch_and_incremental_learning_agree_with_parallel_dips(self):
-        from pacer import ingest
-        from pacer.store import Store
+        from glidepath import ingest
+        from glidepath.store import Store
 
         R = int(MON + 7 * D)
         rows = []

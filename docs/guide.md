@@ -1,4 +1,4 @@
-# Reading pacer
+# Reading glidepath
 
 What the band, its Details, the charts, the macOS menu bar and the terminal
 line say, and how to keep them fresh. [How it works](how-it-works.md) has the
@@ -7,7 +7,7 @@ math behind each number.
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="images/band-dark.png">
-    <img alt="pacer's band above the prompt in the Claude Desktop Code tab, Details open: a chart and a few numbers per window" src="images/band-light.png" width="760">
+    <img alt="glidepath's band above the prompt in the Claude Desktop Code tab, Details open: a chart and a few numbers per window" src="images/band-light.png" width="760">
   </picture>
 </p>
 
@@ -82,30 +82,30 @@ through `/usage`, below.
 
 ### Usage from everywhere
 
-`pacer fetch --every 10` lets pacer ask Claude Code itself: at most every
+`glidepath fetch --every 10` lets glidepath ask Claude Code itself: at most every
 10 minutes the macOS menu bar, or a Desktop band on any system, runs
 `claude -p "/usage"` in the background (about 6 s) and records the account's
-levels it prints, as readings from a session of its own. pacer never sees a
-credential: Claude Code makes the request with its own login. `pacer fetch`
-runs it once now; `pacer fetch --every 0` turns it off (the default);
-`pacer doctor` says when it last answered, or why not. It needs Python 3.9
+levels it prints, as readings from a session of its own. glidepath never sees a
+credential: Claude Code makes the request with its own login. `glidepath fetch`
+runs it once now; `glidepath fetch --every 0` turns it off (the default);
+`glidepath doctor` says when it last answered, or why not. It needs Python 3.9
 or later (time zones) and the `claude` command (on Windows in
 `%USERPROFILE%\.local\bin` or npm's folder). Claude Code answers `/usage`
-with the plan's limits only in a folder it trusts, and pacer asks it in its
-own folder (`~/.pacer`): once, run `claude` there, choose "Yes, I trust
+with the plan's limits only in a folder it trusts, and glidepath asks it in its
+own folder (`~/.glidepath`): once, run `claude` there, choose "Yes, I trust
 this folder", and exit (`doctor` says so when this is missing).
 
 ## The menu bar (macOS)
 
 The band shows only in Claude Code (the Desktop Code tab, the terminal). To
-see the pace anywhere, in a regular chat or another app, pacer can put it in
+see the pace anywhere, in a regular chat or another app, glidepath can put it in
 the macOS menu bar through [SwiftBar](https://swiftbar.app), a free menu bar
 app:
 
 ```sh
 brew install --cask swiftbar      # or download it from swiftbar.app
 open -a SwiftBar                  # once: it asks for a plugin folder
-pacer menubar --install          # writes pacer.1m.sh into that folder
+glidepath menubar --install       # writes glidepath.1m.sh into that folder
 ```
 
 The menu bar then shows two small bars, the 5 hours on top and the week below,
@@ -120,16 +120,16 @@ readings are. `"menubar": {"charts": false}` leaves the charts out. The full sen
 (its submenu, which takes a column on the right of every line, and its
 "Updated") are hidden: Option-click the menu bar item to show them. SwiftBar
 reads that when it starts, so after an update that changes the plugin, run
-`pacer menubar --install` and restart SwiftBar once
+`glidepath menubar --install` and restart SwiftBar once
 (`killall SwiftBar; open -a SwiftBar`). `"menubar": {"style": "text"}` brings back plain text. It refreshes every minute and
 records nothing itself: the readings come from Claude Code sessions on this
 Mac (the status line and the Desktop mod), so while none runs the numbers
 grow old, the title turns grey after 30 minutes and the menu says so.
-`pacer menubar --uninstall` (or `pacer uninstall --apply`) removes it.
+`glidepath menubar --uninstall` (or `glidepath uninstall --apply`) removes it.
 
 To keep the numbers fresh while you work in chats, Cowork or cloud sessions,
-turn on [Usage from everywhere](#usage-from-everywhere) (`pacer fetch --every
-10`; `pacer menubar --fetch 10` does the same). The menu then also says when
+turn on [Usage from everywhere](#usage-from-everywhere) (`glidepath fetch --every
+10`; `glidepath menubar --fetch 10` does the same). The menu then also says when
 `/usage` last answered.
 
 The menu bar also posts a macOS notification, once per window, when a limit
@@ -174,4 +174,4 @@ at least 10 points about to expire below its target (the reserve that a target
 below 100 keeps never counts; never while the 5h burn rate is not known yet).
 `NO_COLOR` turns colors off; the ▲/▼ glyphs keep the verdict.
 
-`pacer now` prints the line with the reasoning behind every number.
+`glidepath now` prints the line with the reasoning behind every number.

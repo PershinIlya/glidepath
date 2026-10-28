@@ -1,6 +1,6 @@
 {
-  "name": "pacer",
-  "version": "0.1.0",
+  "name": "glidepath",
+  "version": "0.2.0",
   "description": "Know if your Claude Code usage will last until the reset: the 5-hour and weekly pace above the prompt",
   "author": {
     "name": "Ilia Pershin",
@@ -14,6 +14,6 @@
     "statusline"
   ],
   "types": "./types/index.d.ts",
-  "homepage": "https://github.com/PershinIlya/pacer",
-  "repository": "https://github.com/PershinIlya/pacer"
+  "homepage": "https://github.com/PershinIlya/glidepath",
+  "repository": "https://github.com/PershinIlya/glidepath"
 }

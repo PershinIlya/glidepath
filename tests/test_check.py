@@ -1,4 +1,4 @@
-"""`pacer check`: the scavenger's go / no-go."""
+"""`glidepath check`: the scavenger's go / no-go."""
 
 import argparse
 import contextlib
@@ -8,9 +8,9 @@ import os
 import unittest
 from unittest import mock
 
-from pacer import commands, weekly
-from pacer.config import FIVE_HOUR, SEVEN_DAY
-from pacer.store import HEARTBEAT, Store
+from glidepath import commands, weekly
+from glidepath.config import FIVE_HOUR, SEVEN_DAY
+from glidepath.store import HEARTBEAT, Store
 
 from .helpers import MON, H, D, TempHome
 
@@ -204,7 +204,7 @@ class Check(TempHome):
         self.assertGreater(len(seen), 1)  # and the rate comes in later
 
     def test_check_command_prints_json_with_min_free_0(self):
-        # Review 6 (E-display-commands-weekly#0): `pacer check --min-free 0`
+        # Review 6 (E-display-commands-weekly#0): `glidepath check --min-free 0`
         # in the late start raised a TypeError and printed nothing, while D-20
         # promises JSON on stdout either way. --min-free is now clamped to the
         # config's range (0 to 100), and nan or inf is an error.

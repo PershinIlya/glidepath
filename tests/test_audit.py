@@ -8,7 +8,7 @@ import time
 import unittest
 from unittest import mock
 
-from pacer import band, chart, commands, config, install, menubar, render, usagecmd
+from glidepath import band, chart, commands, config, install, menubar, render, usagecmd
 
 from .helpers import MON, H, D, TempHome
 from .test_band import NOW, v5, vw
@@ -19,18 +19,18 @@ class Which(unittest.TestCase):
     def test_the_current_folder_is_never_searched(self):
         # Windows searches the current folder before PATH: a cloned repo's
         # py.bat or claude.cmd would run. Empty and "." PATH entries go too.
-        d = tempfile.mkdtemp(prefix="pacer-which-")  # on macOS under /var, a link to /private/var
+        d = tempfile.mkdtemp(prefix="glidepath-which-")  # on macOS under /var, a link to /private/var
         old = os.getcwd()
         try:
-            exe = os.path.join(d, "pacer-probe")
+            exe = os.path.join(d, "glidepath-probe")
             with open(exe, "w") as f:
                 f.write("#!/bin/sh\n")
             os.chmod(exe, 0o755)
             os.chdir(d)
             for path in (".", "", d, os.pathsep.join(["", "/nonexistent"])):
-                self.assertIsNone(config.which("pacer-probe", path=path), path)
+                self.assertIsNone(config.which("glidepath-probe", path=path), path)
             os.chdir(old)
-            self.assertEqual(config.which("pacer-probe", path=d), exe)
+            self.assertEqual(config.which("glidepath-probe", path=d), exe)
         finally:
             os.chdir(old)
 
@@ -71,13 +71,13 @@ class SwiftBarText(unittest.TestCase):
 @unittest.skipIf(sys.platform == "win32", "POSIX file modes")
 class Files(TempHome):
     def test_settings_are_written_through_a_new_temp_file(self):
-        d = tempfile.mkdtemp(prefix="pacer-aw-")
+        d = tempfile.mkdtemp(prefix="glidepath-aw-")
         target = os.path.join(d, "settings.json")
         victim = os.path.join(d, "victim")
         with open(victim, "w") as f:
             f.write("keep")
         # A link at the name the old code used.
-        os.symlink(victim, "%s.pacer.%d.tmp" % (target, os.getpid()))
+        os.symlink(victim, "%s.glidepath.%d.tmp" % (target, os.getpid()))
         install.atomic_write(target, "{}\n")
         with open(victim) as f:
             self.assertEqual(f.read(), "keep")
@@ -86,7 +86,7 @@ class Files(TempHome):
 
     def test_the_data_folder_and_install_record_are_private(self):
         home = os.path.join(self.dir, "fresh", "home")
-        os.environ["PACER_HOME"] = home
+        os.environ["GLIDEPATH_HOME"] = home
         install.save_state({"records": {"x": {"original_statusLine": {"command": "TOKEN=s mybar"}}}})
         self.assertEqual(stat.S_IMODE(os.stat(home).st_mode), 0o700)
         self.assertEqual(stat.S_IMODE(os.stat(install.state_path()).st_mode), 0o600)

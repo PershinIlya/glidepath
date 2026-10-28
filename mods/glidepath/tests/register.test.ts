@@ -37,7 +37,7 @@ type Options = {
   run?: () => { value: ProcessRunResult }
   // What $.fs.exists answers; left out, nothing answers it (the call rejects).
   exists?: (path: string) => boolean
-  // PACER_HOME/changed as the CLI leaves it; absent, the file is missing.
+  // GLIDEPATH_HOME/changed as the CLI leaves it; absent, the file is missing.
   stamp?: { mtimeMs: number; text: string }
   // What $.session.surfaces() answers.
   surfaces?: RenderSurface[]
@@ -51,7 +51,7 @@ function stub(on: StubOn, options: Options = {}) {
   const writes: { path: string; text: string }[] = []
   const runtime =
     options.runtime === undefined
-      ? JSON.stringify({ python: '/usr/bin/python3', entry: '/repo/bin/pacer' })
+      ? JSON.stringify({ python: '/usr/bin/python3', entry: '/repo/bin/glidepath' })
       : options.runtime
   on('fs.read', (_$, e) => {
     const path = String((e as { path?: string }).path)
@@ -89,7 +89,7 @@ function stub(on: StubOn, options: Options = {}) {
 
 function band(surface: RenderSurface): MountTarget {
   return {
-    plugin: 'pacer',
+    plugin: 'glidepath',
     component: 'AbovePrompt',
     surface,
     viewport: { columns: 120, rows: 40, isFullscreen: false },
@@ -130,14 +130,14 @@ test('converts rate limits to the statusLine payload', async () => {
   })
 })
 
-test('draws the pacer line above the prompt in Desktop', async ($, on) => {
+test('draws the glidepath line above the prompt in Desktop', async ($, on) => {
   const { runs, clock } = stub(on)
   await $.session.start(start('desktop'))
   await clock.advance(1)
 
   expect(runs.length).toBe(1)
   expect(runs[0]?.argv).toEqual([
-    '/usr/bin/python3', '-I', '-S', '/repo/bin/pacer', 'statusline', '--source', 'mod', '--format', 'json',
+    '/usr/bin/python3', '-I', '-S', '/repo/bin/glidepath', 'statusline', '--source', 'mod', '--format', 'json',
   ])
   const input = JSON.parse(runs[0]?.init?.stdin ?? '{}')
   expect(input.session_id).toBe('sess-1')
@@ -179,13 +179,13 @@ test('records new readings when a window moves and refreshes every minute', asyn
   expect(runs.length).toBe(3)
 })
 
-test('explains itself when pacer is not installed', async ($, on) => {
+test('explains itself when glidepath is not installed', async ($, on) => {
   const { runs, clock } = stub(on, { runtime: null })
   await $.session.start(start('desktop'))
   await clock.advance(1)
   expect(runs.length).toBe(0)
   const ui = await $.ui.mount(band('desktop'))
-  expect(await ui.find({ type: 'Text', text: /^pacer: / })).toMatchObject({ props: { dimColor: true } })
+  expect(await ui.find({ type: 'Text', text: /^glidepath: / })).toMatchObject({ props: { dimColor: true } })
 })
 
 test('shows why when the CLI fails, instead of a JSON parse error', async ($, on) => {
@@ -194,7 +194,7 @@ test('shows why when the CLI fails, instead of a JSON parse error', async ($, on
       value: {
         exitCode: 2,
         stdout: '',
-        stderr: "python3: can't open file '/old/path/bin/pacer': [Errno 2] No such file or directory\n",
+        stderr: "python3: can't open file '/old/path/bin/glidepath': [Errno 2] No such file or directory\n",
         isStdoutTruncated: false,
         isStderrTruncated: false,
       },
@@ -208,50 +208,50 @@ test('shows why when the CLI fails, instead of a JSON parse error', async ($, on
 
 test('an error reply without surfaces still draws on Desktop', async ($, on) => {
   const { clock } = stub(on, {
-    run: () => ran(JSON.stringify({ ok: false, line: 'pacer: error', segments: [{ text: 'pacer: error', tone: 'dim' }] })),
+    run: () => ran(JSON.stringify({ ok: false, line: 'glidepath: error', segments: [{ text: 'glidepath: error', tone: 'dim' }] })),
   })
   await $.session.start(start('desktop'))
   await clock.advance(1)
   const ui = await $.ui.mount(band('desktop'))
-  expect(await ui.find({ type: 'Text', text: 'pacer: error' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'glidepath: error' })).toBeDefined()
 })
 
-test('an empty PACER_HOME counts as unset, and the CLI gets the same home', async ($, on) => {
-  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', PACER_HOME: '' } })
+test('an empty GLIDEPATH_HOME counts as unset, and the CLI gets the same home', async ($, on) => {
+  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', GLIDEPATH_HOME: '' } })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  expect(slashed(reads[0])).toMatch(ending('/home/u/.pacer/runtime.json'))
-  expect(runs[0]?.init?.env).toEqual({ PACER_HOME: '/home/u/.pacer' })
+  expect(slashed(reads[0])).toMatch(ending('/home/u/.glidepath/runtime.json'))
+  expect(runs[0]?.init?.env).toEqual({ GLIDEPATH_HOME: '/home/u/.glidepath' })
 })
 
 // Review 4: settings.json env reaches the mod as written, so a `~` or a
-// relative PACER_HOME would otherwise be read from the session's cwd.
-test('expands a leading ~ in PACER_HOME and passes the result to the CLI', async ($, on) => {
-  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', PACER_HOME: '~/.pacer-moved' } })
+// relative GLIDEPATH_HOME would otherwise be read from the session's cwd.
+test('expands a leading ~ in GLIDEPATH_HOME and passes the result to the CLI', async ($, on) => {
+  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', GLIDEPATH_HOME: '~/.glidepath-moved' } })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  expect(slashed(reads[0])).toMatch(ending('/home/u/.pacer-moved/runtime.json'))
-  expect(runs[0]?.init?.env).toEqual({ PACER_HOME: '/home/u/.pacer-moved' })
+  expect(slashed(reads[0])).toMatch(ending('/home/u/.glidepath-moved/runtime.json'))
+  expect(runs[0]?.init?.env).toEqual({ GLIDEPATH_HOME: '/home/u/.glidepath-moved' })
 })
 
-test('takes a relative PACER_HOME from HOME, never from the session cwd', async ($, on) => {
-  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', PACER_HOME: 'data/pacer' } })
+test('takes a relative GLIDEPATH_HOME from HOME, never from the session cwd', async ($, on) => {
+  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', GLIDEPATH_HOME: 'data/glidepath' } })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  expect(slashed(reads[0])).toMatch(ending('/home/u/data/pacer/runtime.json'))
-  expect(runs[0]?.init?.env).toEqual({ PACER_HOME: '/home/u/data/pacer' })
+  expect(slashed(reads[0])).toMatch(ending('/home/u/data/glidepath/runtime.json'))
+  expect(runs[0]?.init?.env).toEqual({ GLIDEPATH_HOME: '/home/u/data/glidepath' })
 })
 
-test('uses an absolute PACER_HOME as is, even without HOME', async ($, on) => {
-  const { runs, clock, reads } = stub(on, { env: { PACER_HOME: '/srv/pacer' } })
+test('uses an absolute GLIDEPATH_HOME as is, even without HOME', async ($, on) => {
+  const { runs, clock, reads } = stub(on, { env: { GLIDEPATH_HOME: '/srv/glidepath' } })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  expect(slashed(reads[0])).toMatch(ending('/srv/pacer/runtime.json'))
-  expect(runs[0]?.init?.env).toEqual({ PACER_HOME: '/srv/pacer' })
+  expect(slashed(reads[0])).toMatch(ending('/srv/glidepath/runtime.json'))
+  expect(runs[0]?.init?.env).toEqual({ GLIDEPATH_HOME: '/srv/glidepath' })
 })
 
-test("asks for an absolute path when PACER_HOME names another user's ~", async ($, on) => {
-  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', PACER_HOME: '~other/pacer' } })
+test("asks for an absolute path when GLIDEPATH_HOME names another user's ~", async ($, on) => {
+  const { runs, clock, reads } = stub(on, { env: { HOME: '/home/u', GLIDEPATH_HOME: '~other/glidepath' } })
   await $.session.start(start('desktop'))
   await clock.advance(1)
   expect(reads.length).toBe(0)
@@ -261,32 +261,32 @@ test("asks for an absolute path when PACER_HOME names another user's ~", async (
 })
 
 // Windows: Python takes the home from USERPROFILE (else HOMEDRIVE+HOMEPATH)
-// and never from HOME, and `pacer install` writes runtime.json there.
+// and never from HOME, and `glidepath install` writes runtime.json there.
 const WINDOWS = { OS: 'Windows_NT', USERPROFILE: 'C:\\Users\\u' }
 const WINDOWS_HOMES: [string, Record<string, string>, string][] = [
-  ['USERPROFILE', WINDOWS, 'C:\\Users\\u\\.pacer'],
-  ['USERPROFILE, with HOME ignored', { ...WINDOWS, HOME: '/c/Users/other' }, 'C:\\Users\\u\\.pacer'],
+  ['USERPROFILE', WINDOWS, 'C:\\Users\\u\\.glidepath'],
+  ['USERPROFILE, with HOME ignored', { ...WINDOWS, HOME: '/c/Users/other' }, 'C:\\Users\\u\\.glidepath'],
   [
     'HOMEDRIVE+HOMEPATH without USERPROFILE',
     { OS: 'Windows_NT', USERPROFILE: '', HOMEDRIVE: 'D:', HOMEPATH: '\\Users\\u', HOME: '/home/u' },
-    'D:\\Users\\u\\.pacer',
+    'D:\\Users\\u\\.glidepath',
   ],
-  ['~\\ in PACER_HOME', { ...WINDOWS, PACER_HOME: '~\\pacer' }, 'C:\\Users\\u\\pacer'],
-  ['~/ in PACER_HOME', { ...WINDOWS, PACER_HOME: '~/pacer' }, 'C:\\Users\\u\\pacer'],
-  ['a relative PACER_HOME', { ...WINDOWS, PACER_HOME: 'data\\pacer' }, 'C:\\Users\\u\\data\\pacer'],
-  ['an absolute E:\\ PACER_HOME', { ...WINDOWS, PACER_HOME: 'E:\\data\\pacer' }, 'E:\\data\\pacer'],
-  ['an absolute E:/ PACER_HOME', { ...WINDOWS, PACER_HOME: 'E:/data/pacer' }, 'E:/data/pacer'],
-  ['a rooted \\x, on the home drive', { ...WINDOWS, PACER_HOME: '\\data\\pacer' }, 'C:\\data\\pacer'],
-  ["Git Bash's /c/Users/u/pacer", { ...WINDOWS, PACER_HOME: '/c/Users/u/pacer' }, 'C:/Users/u/pacer'],
-  ["Git Bash's /d/data, on another drive", { ...WINDOWS, PACER_HOME: '/d/data' }, 'D:/data'],
+  ['~\\ in GLIDEPATH_HOME', { ...WINDOWS, GLIDEPATH_HOME: '~\\glidepath' }, 'C:\\Users\\u\\glidepath'],
+  ['~/ in GLIDEPATH_HOME', { ...WINDOWS, GLIDEPATH_HOME: '~/glidepath' }, 'C:\\Users\\u\\glidepath'],
+  ['a relative GLIDEPATH_HOME', { ...WINDOWS, GLIDEPATH_HOME: 'data\\glidepath' }, 'C:\\Users\\u\\data\\glidepath'],
+  ['an absolute E:\\ GLIDEPATH_HOME', { ...WINDOWS, GLIDEPATH_HOME: 'E:\\data\\glidepath' }, 'E:\\data\\glidepath'],
+  ['an absolute E:/ GLIDEPATH_HOME', { ...WINDOWS, GLIDEPATH_HOME: 'E:/data/glidepath' }, 'E:/data/glidepath'],
+  ['a rooted \\x, on the home drive', { ...WINDOWS, GLIDEPATH_HOME: '\\data\\glidepath' }, 'C:\\data\\glidepath'],
+  ["Git Bash's /c/Users/u/glidepath", { ...WINDOWS, GLIDEPATH_HOME: '/c/Users/u/glidepath' }, 'C:/Users/u/glidepath'],
+  ["Git Bash's /d/data, on another drive", { ...WINDOWS, GLIDEPATH_HOME: '/d/data' }, 'D:/data'],
 ]
 for (const [what, env, home] of WINDOWS_HOMES) {
-  test(`Windows: finds the pacer home from ${what}`, async ($, on) => {
+  test(`Windows: finds the glidepath home from ${what}`, async ($, on) => {
     const { runs, clock, reads } = stub(on, { env })
     await $.session.start(start('desktop'))
     await clock.advance(1)
     expect(slashed(reads[0])).toMatch(ending(`${home}/runtime.json`))
-    expect(runs[0]?.init?.env).toEqual({ PACER_HOME: home })
+    expect(runs[0]?.init?.env).toEqual({ GLIDEPATH_HOME: home })
   })
 }
 
@@ -296,7 +296,7 @@ test('Windows: joins runtime.json with a backslash', async ($, on) => {
   await clock.advance(1)
   // The test kit keeps this path as is on Windows; elsewhere it only puts the
   // cwd before it.
-  expect(reads[0]).toMatch(/C:\\Users\\u\\\.pacer\\runtime\.json$/)
+  expect(reads[0]).toMatch(/C:\\Users\\u\\\.glidepath\\runtime\.json$/)
 })
 
 test('Windows: asks for USERPROFILE, not HOME', async ($, on) => {
@@ -309,9 +309,9 @@ test('Windows: asks for USERPROFILE, not HOME', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /USERPROFILE is unset/ })).toBeDefined()
 })
 
-test('Windows: says why a network PACER_HOME cannot be read', async ($, on) => {
+test('Windows: says why a network GLIDEPATH_HOME cannot be read', async ($, on) => {
   const { runs, clock } = stub(on, {
-    env: { ...WINDOWS, PACER_HOME: '\\\\srv\\share\\pacer' },
+    env: { ...WINDOWS, GLIDEPATH_HOME: '\\\\srv\\share\\glidepath' },
     runtime: null,
     denied: 'a network location is not reached from here',
   })
@@ -320,17 +320,17 @@ test('Windows: says why a network PACER_HOME cannot be read', async ($, on) => {
   expect(runs.length).toBe(0)
   const ui = await $.ui.mount(band('desktop'))
   expect(
-    await ui.find({ type: 'Text', text: /network path \\\\srv\\share\\pacer: set PACER_HOME to a local folder/ }),
+    await ui.find({ type: 'Text', text: /network path \\\\srv\\share\\glidepath: set GLIDEPATH_HOME to a local folder/ }),
   ).toBeDefined()
 })
 
-test('resolves PACER_HOME like Python on each platform', async () => {
+test('resolves GLIDEPATH_HOME like Python on each platform', async () => {
   const posix = (home: string | undefined) => ({ windows: false, home })
   const windows = (home: string | undefined) => ({ windows: true, home })
-  expect(resolveHome(undefined, posix('/home/u/'))).toBe('/home/u/.pacer')
+  expect(resolveHome(undefined, posix('/home/u/'))).toBe('/home/u/.glidepath')
   expect(resolveHome('C:\\x', posix('/home/u'))).toBe('/home/u/C:\\x')
   expect(() => resolveHome('~\\x', posix('/home/u'))).toThrow(/only ~ and ~\/ are expanded/)
-  expect(resolveHome(undefined, windows('C:\\'))).toBe('C:\\.pacer')
+  expect(resolveHome(undefined, windows('C:\\'))).toBe('C:\\.glidepath')
   expect(resolveHome('~', windows('C:\\Users\\u'))).toBe('C:\\Users\\u')
   expect(resolveHome('\\\\srv\\share\\x', windows('C:\\Users\\u'))).toBe('\\\\srv\\share\\x')
   expect(resolveHome('//srv/share/x', windows('C:\\Users\\u'))).toBe('//srv/share/x')
@@ -341,7 +341,7 @@ test('resolves PACER_HOME like Python on each platform', async () => {
   expect(() => resolveHome('~other\\x', windows('C:\\Users\\u'))).toThrow(/only ~, ~\/ and ~\\ are expanded/)
 })
 
-// A PACER_HOME set from Git Bash (export PACER_HOME=/c/Users/me/x) names a
+// A GLIDEPATH_HOME set from Git Bash (export GLIDEPATH_HOME=/c/Users/me/x) names a
 // drive: the CLI reads it so (config.windows_home), and the mod must find the
 // same folder, or the band reads a runtime.json the CLI never wrote.
 test("Windows: reads Git Bash's /c/Users/x as C:/Users/x, as the CLI does", async () => {
@@ -370,19 +370,19 @@ test('runs Python with the flags runtime.json lists', async ($, on) => {
   const runtime = JSON.stringify({
     python: 'C:\\Python313\\python.exe',
     args: ['-I', '-S', '-X', 'utf8'],
-    entry: 'C:\\repo\\bin\\pacer',
+    entry: 'C:\\repo\\bin\\glidepath',
   })
   const { runs, clock } = stub(on, { env: WINDOWS, runtime })
   await $.session.start(start('desktop'))
   await clock.advance(1)
   expect(runs[0]?.argv).toEqual([
-    'C:\\Python313\\python.exe', '-I', '-S', '-X', 'utf8', 'C:\\repo\\bin\\pacer',
+    'C:\\Python313\\python.exe', '-I', '-S', '-X', 'utf8', 'C:\\repo\\bin\\glidepath',
     'statusline', '--source', 'mod', '--format', 'json',
   ])
 })
 
 test('refuses runtime.json args that are not a list of strings', async ($, on) => {
-  const runtime = JSON.stringify({ python: '/usr/bin/python3', args: '-I -S', entry: '/repo/bin/pacer' })
+  const runtime = JSON.stringify({ python: '/usr/bin/python3', args: '-I -S', entry: '/repo/bin/glidepath' })
   const { runs, clock } = stub(on, { runtime })
   await $.session.start(start('desktop'))
   await clock.advance(1)
@@ -392,11 +392,11 @@ test('refuses runtime.json args that are not a list of strings', async ($, on) =
 })
 
 test('reads a runtime.json saved with a byte order mark', async ($, on) => {
-  const runtime = `\uFEFF${JSON.stringify({ python: '/usr/bin/python3', entry: '/repo/bin/pacer' })}`
+  const runtime = `\uFEFF${JSON.stringify({ python: '/usr/bin/python3', entry: '/repo/bin/glidepath' })}`
   const { runs, clock } = stub(on, { runtime })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  expect(runs[0]?.argv.slice(0, 4)).toEqual(['/usr/bin/python3', '-I', '-S', '/repo/bin/pacer'])
+  expect(runs[0]?.argv.slice(0, 4)).toEqual(['/usr/bin/python3', '-I', '-S', '/repo/bin/glidepath'])
 })
 
 test('follows mod.refresh_s from the CLI', async ($, on) => {
@@ -411,8 +411,8 @@ test('follows mod.refresh_s from the CLI', async ($, on) => {
 })
 
 // Review 15: Git Bash, which runs the statusLine on Windows, rewrites a
-// PACER_HOME rooted with a slash and no drive to a folder under its own
-// install (C:\Program Files\Git\srv\pacer) before Python sees it, while the
+// GLIDEPATH_HOME rooted with a slash and no drive to a folder under its own
+// install (C:\Program Files\Git\srv\glidepath) before Python sees it, while the
 // mod hands Python the value as given: the band and the line would use 2
 // folders. The CLI refuses the same values (tests/test_config.py, NoDriveHome).
 // The example is on the home's drive, where older versions put the folder.
@@ -420,17 +420,17 @@ const PROFILES: [string, Record<string, string>, string][] = [
   ['a profile on C:', WINDOWS, 'C:'],
   ['a profile on D:', { ...WINDOWS, USERPROFILE: 'D:\\Users\\u' }, 'D:'],
 ]
-for (const value of ['/srv/pacer', '/pacer', '/tmp/x', '/']) {
+for (const value of ['/srv/glidepath', '/glidepath', '/tmp/x', '/']) {
   for (const [what, env, drive] of PROFILES) {
-    test(`Windows: refuses the drive-less PACER_HOME ${value} with ${what}, naming the fix`, async ($, on) => {
-      const { runs, clock, reads } = stub(on, { env: { ...env, PACER_HOME: value } })
+    test(`Windows: refuses the drive-less GLIDEPATH_HOME ${value} with ${what}, naming the fix`, async ($, on) => {
+      const { runs, clock, reads } = stub(on, { env: { ...env, GLIDEPATH_HOME: value } })
       await $.session.start(start('desktop'))
       await clock.advance(1)
       expect(reads.length).toBe(0)
       expect(runs.length).toBe(0)
       const ui = await $.ui.mount(band('desktop'))
       const why =
-        `PACER_HOME ${value} has no drive; Git Bash rewrites such a path to a folder under its own install. ` +
+        `GLIDEPATH_HOME ${value} has no drive; Git Bash rewrites such a path to a folder under its own install. ` +
         `Write it with a drive, e.g. ${drive}${value}, or as ~/...`
       expect(await ui.find({ type: 'Text', text: ending(why) })).toBeDefined()
     })
@@ -440,38 +440,38 @@ for (const value of ['/srv/pacer', '/pacer', '/tmp/x', '/']) {
 test("the drive-less example takes the home's drive, else C:", async () => {
   const windows = (home: string | undefined) => ({ windows: true, home })
   const example = (drive: string) =>
-    'PACER_HOME /srv/pacer has no drive; Git Bash rewrites such a path to a folder under its own install. ' +
-    `Write it with a drive, e.g. ${drive}/srv/pacer, or as ~/...`
-  expect(() => resolveHome('/srv/pacer', windows('D:\\Users\\me'))).toThrow({ message: example('D:') })
+    'GLIDEPATH_HOME /srv/glidepath has no drive; Git Bash rewrites such a path to a folder under its own install. ' +
+    `Write it with a drive, e.g. ${drive}/srv/glidepath, or as ~/...`
+  expect(() => resolveHome('/srv/glidepath', windows('D:\\Users\\me'))).toThrow({ message: example('D:') })
   const unc = '\\\\srv\\share'
-  expect(() => resolveHome('/srv/pacer', windows(`${unc}\\me`))).toThrow({ message: example(unc) })
-  expect(() => resolveHome('/srv/pacer', windows('\\Users\\me'))).toThrow({ message: example('C:') })
-  expect(() => resolveHome('/srv/pacer', windows(undefined))).toThrow({ message: example('C:') })
+  expect(() => resolveHome('/srv/glidepath', windows(`${unc}\\me`))).toThrow({ message: example(unc) })
+  expect(() => resolveHome('/srv/glidepath', windows('\\Users\\me'))).toThrow({ message: example('C:') })
+  expect(() => resolveHome('/srv/glidepath', windows(undefined))).toThrow({ message: example('C:') })
   // C:x as the CLI refuses it, word for word (tests/test_config.py, NoDriveHome).
-  for (const given of ['C:x', 'c:pacer', 'D:']) {
+  for (const given of ['C:x', 'c:glidepath', 'D:']) {
     expect(() => resolveHome(given, windows('C:\\Users\\me'))).toThrow({
-      message: `PACER_HOME ${given} is relative to a drive's current folder; use an absolute path`,
+      message: `GLIDEPATH_HOME ${given} is relative to a drive's current folder; use an absolute path`,
     })
   }
 })
 
 test('the drive-less rule is Windows only, and UNC, \\x and Git Bash drives still work', async () => {
   const windows = (home: string | undefined) => ({ windows: true, home })
-  expect(resolveHome('/srv/pacer', { windows: false, home: '/home/u' })).toBe('/srv/pacer')
+  expect(resolveHome('/srv/glidepath', { windows: false, home: '/home/u' })).toBe('/srv/glidepath')
   expect(resolveHome('//srv/share/x', windows('C:\\Users\\u'))).toBe('//srv/share/x')
   expect(resolveHome('/\\srv\\share\\x', windows('C:\\Users\\u'))).toBe('/\\srv\\share\\x')
-  expect(resolveHome('\\srv\\pacer', windows('D:\\Users\\u'))).toBe('D:\\srv\\pacer')
+  expect(resolveHome('\\srv\\glidepath', windows('D:\\Users\\u'))).toBe('D:\\srv\\glidepath')
   expect(resolveHome('/d/srv', windows('C:\\Users\\u'))).toBe('D:/srv')
 })
 
 // Review 15: on Windows a pinned python.exe that is gone does not fail to
 // start. cmd.exe runs the command instead, and its message names neither
-// Python nor the fix: the band said "pacer: operable program or batch file.".
+// Python nor the fix: the band said "glidepath: operable program or batch file.".
 const GONE = 'C:\\Users\\u\\AppData\\Local\\Programs\\Python\\Python311\\python.exe'
-const GONE_RUNTIME = JSON.stringify({ python: GONE, args: ['-I', '-S', '-X', 'utf8'], entry: 'C:\\repo\\bin\\pacer' })
+const GONE_RUNTIME = JSON.stringify({ python: GONE, args: ['-I', '-S', '-X', 'utf8'], entry: 'C:\\repo\\bin\\glidepath' })
 const NOT_RECOGNIZED =
   `'${GONE}' is not recognized as an internal or external command,\r\n` + 'operable program or batch file.\r\n'
-const NOT_FOUND = /Python not found at C:\\Users\\u\\.*python\.exe: run `pacer install --apply`/
+const NOT_FOUND = /Python not found at C:\\Users\\u\\.*python\.exe: run `glidepath install --apply`/
 
 function failed(exitCode: number, stderr: string): () => { value: ProcessRunResult } {
   return () => ({ value: { exitCode, stdout: '', stderr, isStdoutTruncated: false, isStderrTruncated: false } })
@@ -973,7 +973,7 @@ test('logs which surfaces the session draws on and whether one asked for the ban
   const { clock, writes } = stub(on, { surfaces: [], run: () => cli([win({ id: 'h5' }), win({ id: 'wk' })]) })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  const log = () => writes.filter((w) => w.path.endsWith('/home/u/.pacer/mod.log')).pop()?.text ?? ''
+  const log = () => writes.filter((w) => w.path.endsWith('/home/u/.glidepath/mod.log')).pop()?.text ?? ''
   expect(log()).toMatch(/sess-1 start: surfaces \[\]\n$/)
   await $.ui.mount(band('desktop'))
   expect(log()).toMatch(/band asked on desktop: drawn\n$/)

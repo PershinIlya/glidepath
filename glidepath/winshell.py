@@ -4,7 +4,7 @@ On Windows Claude Code runs the statusLine through Git Bash when it finds one
 (`bash.exe -c "<command>"`), else through PowerShell (pwsh first, then
 Windows PowerShell 5.1) as `-NoProfile -NonInteractive -ExecutionPolicy
 Bypass -Command "<command>"`. The statusLine setting has no `shell` or `args`
-field, so pacer predicts the shell the way Claude Code finds it, writes a
+field, so glidepath predicts the shell the way Claude Code finds it, writes a
 command that reads right there (D-17), and runs a composed command the same
 way. A command made of bare words reads the same in both shells, so it keeps
 working when the shell Claude Code picks changes.
@@ -32,13 +32,13 @@ PS_QUOTES = "'\u2018\u2019\u201a\u201b"
 ASCII_ALNUM = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 # Characters that mean nothing to bash or PowerShell inside a word.
 BARE_ASCII = ASCII_ALNUM | frozenset("_./:+=-")
-# pacer statusline's flag for a composed command stored encoded (see encoded).
+# glidepath statusline's flag for a composed command stored encoded (see encoded).
 COMPOSE_B64 = "--compose-b64"
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
 
 def python_flags(windows=None):
-    """Interpreter flags for every Python command pacer writes (statusLine,
+    """Interpreter flags for every Python command glidepath writes (statusLine,
     runtime.json, launcher). -I ignores PYTHONUTF8 and PYTHONIOENCODING, and on
     Windows a pipe gets the ANSI code page, so Windows adds -X utf8."""
     windows = config.IS_WINDOWS if windows is None else windows
@@ -274,7 +274,7 @@ def short_name(path):
 def short_path(path, short=None):
     """The path with its folders in their 8.3 short form (C:\\PROGRA~1\\
     PYTHON~1\\python.exe) and its file name as is, so a command keeps naming
-    pacer; or None: off Windows, on any error, or for a folder that does not
+    glidepath; or None: off Windows, on any error, or for a folder that does not
     exist. A volume that keeps no short names gives the long folders back.
     `short` maps an existing path to its 8.3 form (tests pass their own)."""
     if not config.IS_WINDOWS:

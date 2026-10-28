@@ -11,7 +11,7 @@ from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest import mock
 
-from pacer import commands, config, profile, transcripts
+from glidepath import commands, config, profile, transcripts
 
 from .helpers import MON, H, D, TempHome
 
@@ -35,7 +35,7 @@ def assistant(ts, mid, out=100, content=SECRET):
 class Bootstrap(TempHome):
     def setUp(self):
         super().setUp()
-        self.root = tempfile.mkdtemp(prefix="pacer-tr-")
+        self.root = tempfile.mkdtemp(prefix="glidepath-tr-")
         proj = os.path.join(self.root, "-Users-me-work")
         os.makedirs(os.path.join(proj, "sess", "subagents"))
         self.now = MON + 28 * D
@@ -83,7 +83,7 @@ class Bootstrap(TempHome):
         for name in os.listdir(self.dir):
             with open(os.path.join(self.dir, name), "rb") as f:
                 self.assertNotIn(SECRET.encode(), f.read(), name)
-        from pacer.store import Store
+        from glidepath.store import Store
 
         self.st = Store(os.path.join(self.dir, "tempo.db"))
         prof = profile.load(self.st)
@@ -162,7 +162,7 @@ class LongPaths(TempHome):
 
     def setUp(self):
         super().setUp()
-        self.root = tempfile.mkdtemp(prefix="pacer-long-")
+        self.root = tempfile.mkdtemp(prefix="glidepath-long-")
         self.addCleanup(shutil.rmtree, self.root, True)
 
     def test_windows_walks_from_an_extended_length_root(self):

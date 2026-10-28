@@ -1,12 +1,12 @@
-# Contributing to pacer
+# Contributing to glidepath
 
-Thanks for taking a look. pacer is small and opinionated; issues, ideas and
+Thanks for taking a look. glidepath is small and opinionated; issues, ideas and
 pull requests are all welcome.
 
 ## Before you start
 
 - **Bugs:** open an issue with what you saw and what you expected, your OS,
-  `claude --version` and `pacer doctor`'s output. Doctor prints your
+  `claude --version` and `glidepath doctor`'s output. Doctor prints your
   `statusLine` command: remove anything secret from it first.
 - **Bigger changes:** open an issue first, so we can agree on the shape
   before you spend the time.
@@ -14,14 +14,14 @@ pull requests are all welcome.
 
 ## How the code is laid out
 
-- `pacer/`: the CLI, Python 3.8+ standard library only (no third-party
+- `glidepath/`: the CLI, Python 3.8+ standard library only (no third-party
   packages, ever: the status line runs as `python -I -S`). The math is in
   `pace.py` (5 hours), `weekly.py` and `profile.py` (the week); what the
   band, the line and the menu bar say is in `band.py` and `render.py`.
-- `mods/pacer/`: the Claude Desktop mod (TypeScript). It only runs the CLI
+- `mods/glidepath/`: the Claude Desktop mod (TypeScript). It only runs the CLI
   and draws what it prints; all the words and numbers come from the CLI.
 - `tests/`: unittest, hermetic (every test gets its own temporary
-  `PACER_HOME` and `CLAUDE_CONFIG_DIR`; nothing touches your real `~/.claude`).
+  `GLIDEPATH_HOME` and `CLAUDE_CONFIG_DIR`; nothing touches your real `~/.claude`).
 - [docs/design-decisions.md](docs/design-decisions.md): why each rule is the
   way it is. A change to a rule gets its entry there (a new `D-` number, or
   an addition to the one it changes), and code comments point to it.
@@ -30,15 +30,15 @@ pull requests are all welcome.
 
 - Plain, short English in user-facing text, numerals for numbers.
 - Every bug fix comes with a test that fails without the fix.
-- The version lives in `pacer/__init__.py` and `mods/pacer/.claude-plugin/plugin.json`:
+- The version lives in `glidepath/__init__.py` and `mods/glidepath/.claude-plugin/plugin.json`:
   bump both together, and add a line to [CHANGELOG.md](CHANGELOG.md).
 
 ## Tests
 
 ```sh
 python3 -m unittest discover -s tests -t .     # 554 tests, Python 3.8 to 3.13
-claude plugin validate mods/pacer
-claude plugin test mods/pacer                 # 75 tests
+claude plugin validate mods/glidepath
+claude plugin test mods/glidepath              # 75 tests
 python3 scripts/ci_integration.py              # end to end, throwaway folders
 ```
 
@@ -52,10 +52,10 @@ throwaway settings files, including the byte-identical round trip (CRLF, mode,
 several settings files, a crash mid-install, a lost install record). A
 model-based fuzzer runs 400 seeded random sequences of installs and uninstalls
 (some with `--no-mod`) on two settings files, with claude working, missing or
-hanging, hand edits (the command inside pacer's `--compose` included), the
+hanging, hand edits (the command inside glidepath's `--compose` included), the
 plugin commands run by hand and the data folder deleted in between. It checks
 after every step that `runtime.json` exists while a mod record does, and at
-the end that nothing of pacer is left, each file holds the user's JSON, and a
+the end that nothing of glidepath is left, each file holds the user's JSON, and a
 file the user never edited comes back byte for byte.
 
 Windows rules run on every OS with the one platform flag (`config.IS_WINDOWS`)
@@ -68,8 +68,8 @@ the command it wrote through each shell Claude Code may use (Git Bash, pwsh and
 powershell.exe; `/bin/sh` on macOS), composed commands in plain and encoded
 form, and uninstall back to the same bytes; a read-only settings.json; and on
 Windows the launchers from cmd.exe, PowerShell and Git Bash, a drive-less
-`PACER_HOME`, and a venv's `python.exe` pinned as its base interpreter.
-`.gitattributes` keeps `bin/pacer`, `*.py` and `*.sh` LF on a Windows
+`GLIDEPATH_HOME`, and a venv's `python.exe` pinned as its base interpreter.
+`.gitattributes` keeps `bin/glidepath`, `*.py` and `*.sh` LF on a Windows
 checkout, where a CR breaks the `#!` line in Git Bash.
 
 ## Pull requests

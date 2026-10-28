@@ -12,7 +12,7 @@ import time
 import unittest
 from unittest import mock
 
-from pacer import config, winshell
+from glidepath import config, winshell
 
 GIT_DEFAULT = r"C:\Program Files\Git\bin\bash.exe"
 PS51 = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -109,7 +109,7 @@ class ShellArgv(unittest.TestCase):
         self.assertEqual(argv, ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "x"])
 
     def test_the_shell_given_wins_over_the_prediction(self):
-        # Review 15 (shells#0): the Composer passes the shell that started pacer.
+        # Review 15 (shells#0): the Composer passes the shell that started glidepath.
         mine = r"D:\Git\bin\bash.exe"
         with mock.patch.object(winshell, "predict_shell", side_effect=AssertionError("not asked")):
             argv, env = winshell.shell_argv("printf x", {"PATH": r"C:\Windows"}, ("bash", mine))
@@ -126,7 +126,7 @@ class ShellArgv(unittest.TestCase):
 
 class Quoting(unittest.TestCase):
     PY = "C:/Users/me/AppData/Local/Programs/Python/Python312/python.exe"
-    ENTRY = "C:/Users/me/Claude-Code-Mods/bin/pacer"
+    ENTRY = "C:/Users/me/Claude-Code-Mods/bin/glidepath"
     TRICKY = ["", " ", "a b", "it's", "\u2019x\u2018", 'say "hi"', "$HOME `x` ${y} %PATH% !", "a\\b\\", "tab\there",
               "semi;colon&amp|pipe", "~/x", "@a,b", "C:/Program Files/x.exe", "J\u00fcrgen", "en\u2013dash", "''"]
 
@@ -185,7 +185,7 @@ class Quoting(unittest.TestCase):
             self.assertTrue(winshell.is_bare(w), w)
         for w in ("~", "~/x", "C:/x/~1", "x=~", "a:~", "-~", ".~", "_~", "\u00fc~"):
             self.assertFalse(winshell.is_bare(w), w)
-        argv = ["C:/PROGRA~1/PYTHON~1/python.exe", "-I", "C:/Users/JOHNSM~1/repo/bin/pacer", "statusline"]
+        argv = ["C:/PROGRA~1/PYTHON~1/python.exe", "-I", "C:/Users/JOHNSM~1/repo/bin/glidepath", "statusline"]
         cmd = winshell.command_line(argv, "bash")
         self.assertEqual(cmd, " ".join(argv))
         self.assertEqual(winshell.command_line(argv, "powershell"), cmd)
@@ -290,7 +290,7 @@ class ShortPath(unittest.TestCase):
 
 class ParentShell(unittest.TestCase):
     """Review 15 (shells#0): the Composer runs the old command in the shell that
-    started pacer, where Claude Code ran the statusLine. Inside Git Bash the
+    started glidepath, where Claude Code ran the statusLine. Inside Git Bash the
     PATH puts Git's own git first, so repeating Claude Code's search there can
     end in PowerShell."""
 
@@ -324,12 +324,12 @@ class ParentShell(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "needs Windows")
     def test_a_child_of_each_shell_sees_it(self):
-        tmp = tempfile.mkdtemp(prefix="pacer-parent-")
+        tmp = tempfile.mkdtemp(prefix="glidepath-parent-")
         self.addCleanup(shutil.rmtree, tmp, True)
         script = os.path.join(tmp, "child.py")
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(script, "w", encoding="utf-8") as f:
-            f.write("import sys\nsys.path.insert(0, %r)\nfrom pacer import winshell\n"
+            f.write("import sys\nsys.path.insert(0, %r)\nfrom glidepath import winshell\n"
                     "print('%%s|%%s' %% (winshell.parent_shell() or (None, None)))\n" % root)
         argv = [winshell.slashes(sys.executable), winshell.slashes(script)]
         env = dict(os.environ)

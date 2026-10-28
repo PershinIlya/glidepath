@@ -16,7 +16,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from pacer import config, install, winshell
+from glidepath import config, install, winshell
 
 SETTINGS = {
     "model": "opus",
@@ -29,7 +29,7 @@ SETTINGS = {
 # Hand-formatted: no serializer writes it back like this, so only a restore
 # from the backup's bytes gives it back.
 IRREGULAR = '{\n  "model": "opus",\n  "env": {"FOO": "b\u00e4r"},\n    "permissions": {"allow": ["Bash(git status)"], "deny": []}\n}\n\n'
-# A user file that lists another plugin: both plugin keys exist before pacer.
+# A user file that lists another plugin: both plugin keys exist before glidepath.
 WITH_PLUGINS = ('{\n  "model": "opus",\n  "enabledPlugins": {"other@mkt": true},\n'
                 '  "extraKnownMarketplaces": {"mkt": {"source": {"source": "github", "repo": "a/b"}}}\n}\n')
 
@@ -95,10 +95,10 @@ class Sandbox(unittest.TestCase):
     """Throwaway settings files, data folder and home; no tests of its own."""
 
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="pacer-inst-")
+        self.dir = tempfile.mkdtemp(prefix="glidepath-inst-")
         self.home = os.path.join(self.dir, "home")
         # Hermetic: no code path (old or new) can reach the real ~/.claude (Windows reads USERPROFILE).
-        self.env = mock.patch.dict(os.environ, {"PACER_HOME": self.home, "CLAUDE_CONFIG_DIR": os.path.join(self.dir, "claude"),
+        self.env = mock.patch.dict(os.environ, {"GLIDEPATH_HOME": self.home, "CLAUDE_CONFIG_DIR": os.path.join(self.dir, "claude"),
                                                 "HOME": os.path.join(self.dir, "userhome"),
                                                 "USERPROFILE": os.path.join(self.dir, "userhome")})
         self.env.start()
@@ -126,7 +126,7 @@ class Sandbox(unittest.TestCase):
         """A clean slate between subtests: no install.json, no backups."""
         shutil.rmtree(self.home, ignore_errors=True)
         for n in os.listdir(self.dir):
-            if ".pacer-backup-" in n:
+            if ".glidepath-backup-" in n:
                 os.remove(os.path.join(self.dir, n))
 
 
@@ -150,7 +150,7 @@ class Install(Sandbox):
                 self.assertEqual({k: v for k, v in after.items() if k != "statusLine"}, SETTINGS)
                 self.assertTrue(install.is_ours(after["statusLine"]["command"]))
                 self.assertEqual(after["statusLine"]["refreshInterval"], 60)
-                backups = [f for f in os.listdir(self.dir) if ".pacer-backup-" in f]
+                backups = [f for f in os.listdir(self.dir) if ".glidepath-backup-" in f]
                 self.assertTrue(backups)
                 self.assertEqual(install.read_text(os.path.join(self.dir, backups[-1])), before)
                 rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
@@ -185,9 +185,9 @@ class Install(Sandbox):
         self.run_cmd(install.install, args(self.path, apply=True))
         once = self.read()
         rc, out = self.run_cmd(install.install, args(self.path, apply=True))
-        self.assertIn("already runs pacer", out)
+        self.assertIn("already runs glidepath", out)
         self.assertEqual(self.read(), once)
-        backups = [f for f in os.listdir(self.dir) if ".pacer-backup-" in f]
+        backups = [f for f in os.listdir(self.dir) if ".glidepath-backup-" in f]
         self.assertEqual(len(backups), 1)
 
     def test_other_changes_after_install_survive_uninstall(self):
@@ -260,12 +260,12 @@ class Install(Sandbox):
         self.assertFalse(os.path.exists(lp))
 
     def test_launchers_of_this_system(self):
-        # Review 15 (W-4): on Windows pacer.cmd and, for Git Bash, an sh pacer; elsewhere pacer alone.
+        # Review 15 (W-4): on Windows glidepath.cmd and, for Git Bash, an sh glidepath; elsewhere glidepath alone.
         self.write(SETTINGS)
         bindir = os.path.join(self.dir, "bin")
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=bindir))
         self.assertEqual(rc, 0, out)
-        self.assertEqual(sorted(os.listdir(bindir)), ["pacer", "pacer.cmd"] if config.IS_WINDOWS else ["pacer"])
+        self.assertEqual(sorted(os.listdir(bindir)), ["glidepath", "glidepath.cmd"] if config.IS_WINDOWS else ["glidepath"])
         self.assertEqual("sh_launcher" in install.load_state(), config.IS_WINDOWS)
         rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
         self.assertEqual(rc, 0, out)
@@ -290,7 +290,7 @@ class Install(Sandbox):
         self.assertEqual(self.read(), changed)
         self.assertNotEqual(self.read(), before)
 
-    def test_lost_install_record_never_restores_pacer_itself(self):
+    def test_lost_install_record_never_restores_glidepath_itself(self):
         s = dict(SETTINGS, statusLine={"type": "command", "command": "~/bin/theirs.sh"})
         before = self.write(s)
         self.run_cmd(install.install, args(self.path, apply=True))
@@ -340,7 +340,7 @@ class Install(Sandbox):
         before = self.write({"model": "opus", "permissions": {"allow": ["Bash(ls)"]}}, indent=None)
         self.run_cmd(install.install, args(self.path, apply=True))
         self.run_cmd(install.install, args(self.path, apply=True, python=self.alt_python()))
-        backups = sorted(f for f in os.listdir(self.dir) if ".pacer-backup-" in f)
+        backups = sorted(f for f in os.listdir(self.dir) if ".glidepath-backup-" in f)
         self.assertEqual(len(backups), 2)
         self.run_cmd(install.uninstall, args(self.path, apply=True))
         self.assertEqual(self.read(), before)
@@ -393,7 +393,7 @@ class Install(Sandbox):
     def test_v1_record_with_relative_path_is_recovered(self):
         s = dict(SETTINGS, statusLine={"type": "command", "command": "echo mine"})
         before = self.write(s)
-        backup = os.path.realpath(self.path) + ".pacer-backup-20261014-090000"
+        backup = os.path.realpath(self.path) + ".glidepath-backup-20261014-090000"
         put(backup, before)
         obj = dict(SETTINGS, statusLine={"type": "command", "command": install.our_command(sys.executable, install.entry_path()),
                                          "refreshInterval": 60})
@@ -635,7 +635,7 @@ class Install(Sandbox):
                 put(self.path, json.dumps(obj, indent=2, ensure_ascii=False))
                 if then is not None:
                     rc, out = self.run_cmd(install.install, args(self.path, apply=True, **then))
-                    self.assertIn("REPLACE" if then else "already runs pacer", out)
+                    self.assertIn("REPLACE" if then else "already runs glidepath", out)
                 rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
                 self.assertEqual(rc, 0, out)
                 after = json.loads(self.read())
@@ -713,7 +713,7 @@ class Install(Sandbox):
         # file's baseline, and the entry must not stop install from taking the snapshot.
         proj = self._proj()
         v1_text = '{"model": "opus"}\n'  # the user file when version 1 installed; edited since
-        backup = os.path.realpath(self.path) + ".pacer-backup-20261001-090000"
+        backup = os.path.realpath(self.path) + ".glidepath-backup-20261001-090000"
         put(backup, v1_text)
         os.makedirs(self.home)
         with open(install.state_path(), "w") as f:  # what c016f98's uninstall left
@@ -733,9 +733,9 @@ class Install(Sandbox):
 
     # -- fifth review ----------------------------------------------------------------
     def test_command_put_in_compose_with_no_statusline_before_is_restored(self):
-        # Review 5 (D-install#0): with no statusLine (or no file) before pacer, a command
+        # Review 5 (D-install#0): with no statusLine (or no file) before glidepath, a command
         # the user put in --compose is the original too, also after a repin or --replace
-        # (which must record it first). The refreshInterval 60 pacer added goes with it.
+        # (which must record it first). The refreshInterval 60 glidepath added goes with it.
         newer = "npx -y ccstatusline@latest"
         for before in (SETTINGS, None):
             for then in (None, {}, {"replace": True}):
@@ -753,7 +753,7 @@ class Install(Sandbox):
                     put(self.path, json.dumps(obj, indent=2, ensure_ascii=False))
                     if then is not None:
                         rc, out = self.run_cmd(install.install, args(self.path, apply=True, **then))
-                        self.assertIn("REPLACE" if then else "already runs pacer", out)
+                        self.assertIn("REPLACE" if then else "already runs glidepath", out)
                     if then:  # "kept in the backup and in install.json"
                         rec = install.load_state()["records"][self.path]
                         self.assertEqual(rec["original_statusLine"], {"type": "command", "command": newer, "padding": 0})
@@ -813,7 +813,7 @@ class Install(Sandbox):
     def test_user_file_edited_before_installing_into_it_comes_back_as_edited(self):
         # Review 5 (D-install#2): the mod went in first (for the project file, or for the
         # user file with --no-mod uninstalled since), then the user edited the user file,
-        # then pacer was installed into it. The file right before that install is its
+        # then glidepath was installed into it. The file right before that install is its
         # baseline (the one before the mod only a fallback), so it comes back byte for byte.
         proj = self._proj()
         for first, last in ((("iP",), ("iU", "uU")), (("iP",), ("iU-nomod", "uU-nomod")),
@@ -889,7 +889,7 @@ class Install(Sandbox):
                 self.run_cmd(install.uninstall, args(self.path, apply=True))
                 put(self.path, "")
                 self.run_cmd(install.install, args(self.path, apply=True))
-                self.assertEqual(len([n for n in os.listdir(self.dir) if ".pacer-backup-" in n]), 2)
+                self.assertEqual(len([n for n in os.listdir(self.dir) if ".glidepath-backup-" in n]), 2)
                 shutil.rmtree(self.home)  # install.json gone
                 if reinstall:
                     self.run_cmd(install.install, args(self.path, apply=True))
@@ -906,7 +906,7 @@ class Install(Sandbox):
 
     def test_user_file_the_plugin_cli_rewrote_comes_back_although_its_plugin_keys_existed(self):
         # Review 6 (F-install#0): the user file lists another plugin, so both plugin keys were
-        # there before pacer. Once pacer has seen the mod listed there (a failed uninstall
+        # there before glidepath. Once glidepath has seen the mod listed there (a failed uninstall
         # after the user ran the printed commands, or a repin without claude after the plugin
         # CLI installed it), the plugin CLI has written there, whatever comes next: after the
         # user removes the plugin by hand, uninstall still gives the file back byte for byte.
@@ -950,7 +950,7 @@ class Install(Sandbox):
                 self._assert_clean(proj)
 
     def test_full_uninstall_without_a_user_file_leaves_no_record_of_it(self):
-        # Review 6 (F-install#2): no user file, pacer installed into it and into a project
+        # Review 6 (F-install#2): no user file, glidepath installed into it and into a project
         # file, then everything uninstalled. The user file's kept record must go with the mod,
         # or a later install cycle takes it as that file's baseline from before the mod and
         # loses the byte-for-byte restore. Install also drops such a record left by older code.
@@ -974,7 +974,7 @@ class Install(Sandbox):
                 self._assert_clean(proj)
 
     def test_fresh_user_file_snapshot_replaces_its_kept_record(self):
-        # Review 6 (F-install#3): pacer went into the user file and out again while a manual
+        # Review 6 (F-install#3): glidepath went into the user file and out again while a manual
         # mod stayed for the project file, so the user file has a kept record. The user then
         # edited (or created) it, and an install with claude on PATH runs the plugin commands
         # for the first time. The snapshot taken then is the newer baseline from before the
@@ -999,9 +999,9 @@ class Install(Sandbox):
 
     def test_command_put_in_compose_survives_replace_after_the_record_is_lost(self):
         # Review 6 (F-install#4): install.json is gone, and the user put or changed a command in
-        # pacer's --compose. `install --replace` drops it from the statusLine, so the record it
+        # glidepath's --compose. `install --replace` drops it from the statusLine, so the record it
         # rebuilds must hold it ("kept in the backup and in install.json"), whether the newest
-        # backup from before pacer shows no statusLine, another one, or there is no backup left.
+        # backup from before glidepath shows no statusLine, another one, or there is no backup left.
         newer = "npx -y ccstatusline@latest"
         theirs = {"type": "command", "command": "~/old-line.sh"}
         for start, backups in ((SETTINGS, True), (dict(SETTINGS, statusLine=theirs), True), (SETTINGS, False)):
@@ -1012,7 +1012,7 @@ class Install(Sandbox):
                 shutil.rmtree(self.home)  # install.json gone
                 if not backups:  # and the backups: a repin rebuilds a record that knows nothing
                     for n in os.listdir(self.dir):
-                        if ".pacer-backup-" in n:
+                        if ".glidepath-backup-" in n:
                             os.remove(os.path.join(self.dir, n))
                     self.run_cmd(install.install, args(self.path, apply=True))
                 obj = json.loads(self.read())
@@ -1030,7 +1030,7 @@ class Install(Sandbox):
 
     def test_user_file_created_after_the_mod_is_restored_not_deleted(self):
         # Review 6 (F-install#5): there was no user file when the mod went in; the user then
-        # created one ('{}', or blank), and pacer went into it and out again. The file right
+        # created one ('{}', or blank), and glidepath went into it and out again. The file right
         # before that install is its first baseline, so it comes back; the snapshot from before
         # the mod (no file) is only a fallback and must not get it deleted.
         proj = self._proj()
@@ -1092,9 +1092,9 @@ class Install(Sandbox):
                     self.assertEqual(state.get("records"), {})
                     self.assertNotIn("mod", state)
 
-    def test_plugin_keys_that_hold_only_pacer_are_not_the_users(self):
-        # Install fuzzer: the user ran the plugin commands by hand before pacer's snapshot of
-        # the user file, so its plugin keys hold nothing but pacer's entries. They are the
+    def test_plugin_keys_that_hold_only_glidepath_are_not_the_users(self):
+        # Install fuzzer: the user ran the plugin commands by hand before glidepath's snapshot of
+        # the user file, so its plugin keys hold nothing but glidepath's entries. They are the
         # plugin CLI's, so uninstall removes them once empty.
         proj = self._proj()
         for steps in (("mod-by-hand", "iP", "uP"), ("mod-by-hand", "iU", "uU"), ("mod-by-hand", "iP-nobin", "uP")):
@@ -1110,7 +1110,7 @@ class Install(Sandbox):
         ok, ver, sq, ms, note = install.probe(sys.executable)
         self.assertTrue(ok, note)
         self.assertFalse(install.probe("python3")[0])  # not absolute
-        cmd = install.our_command("/opt/my py/python3", "/x/bin/pacer", "echo 'a b'")
+        cmd = install.our_command("/opt/my py/python3", "/x/bin/glidepath", "echo 'a b'")
         self.assertEqual(install.compose_of(cmd), "echo 'a b'")
         self.assertTrue(install.is_ours(cmd))
 
@@ -1150,8 +1150,8 @@ class Install(Sandbox):
         # Review 6 follow-up: names sorted as strings put "-9" after "-10".
         self.write(SETTINGS)
         for suffix, cmd in (("", "zero"), ("-9", "nine"), ("-10", "ten")):
-            put(self.path + ".pacer-backup-20261014-090000" + suffix, json.dumps(dict(SETTINGS, statusLine={"type": "command", "command": cmd})))
-        put(self.path + ".pacer-backup-20261013-235959-99", json.dumps(dict(SETTINGS, statusLine={"type": "command", "command": "yesterday"})))
+            put(self.path + ".glidepath-backup-20261014-090000" + suffix, json.dumps(dict(SETTINGS, statusLine={"type": "command", "command": cmd})))
+        put(self.path + ".glidepath-backup-20261013-235959-99", json.dumps(dict(SETTINGS, statusLine={"type": "command", "command": "yesterday"})))
         had, sl = install._original_from_backups(self.path)
         self.assertTrue(had)
         self.assertEqual(sl["command"], "ten")
@@ -1185,7 +1185,7 @@ class Install(Sandbox):
 
     def test_uninstall_removes_the_mod_after_install_json_is_lost(self):
         # Review 7 (install-fuzz#1): the data folder was wiped (or the shell has another
-        # PACER_HOME), so install.json has no mod record, but the user file still lists
+        # GLIDEPATH_HOME), so install.json has no mod record, but the user file still lists
         # the mod. Uninstall rebuilds the record from the user file, says so, and runs the
         # reverse commands, also in the dry run; with claude missing it exits 1 to retry.
         proj = self._proj()
@@ -1228,7 +1228,7 @@ class Install(Sandbox):
     def _v1_install(self, text):
         """What version 1 (c016f98) left after `install --apply` into the user file with
         claude on PATH: its backup, the file with the plugin CLI's keys, and its record."""
-        backup = os.path.realpath(self.path) + ".pacer-backup-20261001-090000"
+        backup = os.path.realpath(self.path) + ".glidepath-backup-20261001-090000"
         put(backup, text)
         sl = {"type": "command", "command": install.our_command(sys.executable, install.entry_path()),
               "refreshInterval": 60}
@@ -1264,14 +1264,14 @@ class Install(Sandbox):
     def test_version_1_mod_record_takes_the_user_files_kept_record_with_it(self):
         # Review 7 (install-fuzz#2, found again by the stress fuzzer on the fix): version 1
         # installed into a project file, its plugin commands wrote the default user file, and
-        # pacer went into that file with --no-mod and out again while the mod stayed. The
+        # glidepath went into that file with --no-mod and out again while the mod stayed. The
         # user file's record is kept for the mod; the uninstall that removes the mod must
         # tidy that file and drop the record, though the version-1 mod names no user file.
         proj = self._proj()
         sl = {"type": "command", "command": install.our_command(sys.executable, install.entry_path()),
               "refreshInterval": 60}
         put(proj, json.dumps({"model": "sonnet", "statusLine": sl}, indent=2))
-        backup = os.path.realpath(proj) + ".pacer-backup-20261001-090000"
+        backup = os.path.realpath(proj) + ".glidepath-backup-20261001-090000"
         put(backup, '{"model": "sonnet"}')
         os.makedirs(self.home)
         with open(install.state_path(), "w") as f:  # what version 1 wrote for `install --apply --settings proj`
@@ -1293,9 +1293,9 @@ class Install(Sandbox):
 
     def test_command_put_in_compose_wins_over_a_backup_when_uninstall_finds_no_record(self):
         # Review 7 (install-fuzz#3): install.json is gone and the user changed the command in
-        # pacer's --compose. Uninstall restores that command, as a repin would have recorded
-        # it, not the older one in the backup from before pacer (and, when there was no
-        # statusLine before pacer, without the refreshInterval pacer added).
+        # glidepath's --compose. Uninstall restores that command, as a repin would have recorded
+        # it, not the older one in the backup from before glidepath (and, when there was no
+        # statusLine before glidepath, without the refreshInterval glidepath added).
         newer = "npx -y ccstatusline@latest"
         theirs = {"type": "command", "command": "~/old-line.sh"}
         for start, want in ((dict(SETTINGS, statusLine=theirs), dict(theirs, command=newer)),
@@ -1316,11 +1316,11 @@ class Install(Sandbox):
                 self.assertEqual(after, SETTINGS)
 
     def test_command_put_in_compose_survives_replace_and_then_a_lost_record(self):
-        # Review 7 (install fuzzer): the user changed the command in pacer's --compose, then
+        # Review 7 (install fuzzer): the user changed the command in glidepath's --compose, then
         # `install --replace` dropped it from the file (kept in the backup it took and in
         # install.json), then install.json was lost. That backup's --compose wins over the
-        # older backup from before pacer, or is used when there is none (then with the
-        # statusLine's other keys as pacer ran it: nothing tells which were pacer's).
+        # older backup from before glidepath, or is used when there is none (then with the
+        # statusLine's other keys as glidepath ran it: nothing tells which were glidepath's).
         newer = "npx -y ccstatusline@latest"
         theirs = {"type": "command", "command": "~/old-line.sh"}
         for start, want in ((dict(SETTINGS, statusLine=theirs), dict(theirs, command=newer)),
@@ -1387,7 +1387,7 @@ class Install(Sandbox):
         self.assertEqual(self.read(), before)
 
     # -- eighth review ---------------------------------------------------------------
-    def test_launcher_follows_a_repin_and_only_the_newest_is_pacers(self):
+    def test_launcher_follows_a_repin_and_only_the_newest_is_glidepaths(self):
         # Review 8 (delta-install#0): a repin without --bin-dir left the launcher running the
         # old interpreter, and a launcher in an earlier --bin-dir outlived the full uninstall.
         before = self.write(SETTINGS)
@@ -1445,13 +1445,13 @@ class Install(Sandbox):
                 with self.subTest(legacy=legacy):
                     self._reset()
                     for name, cmd in ((legacy, "legacy"), ("20261014-050000Z", "utc")):
-                        put(self.path + ".pacer-backup-" + name, json.dumps(dict(SETTINGS, statusLine={"type": "command", "command": cmd})))
+                        put(self.path + ".glidepath-backup-" + name, json.dumps(dict(SETTINGS, statusLine={"type": "command", "command": cmd})))
                     self.assertEqual(install._original_from_backups(self.path)[1]["command"], want)
 
     def test_the_users_own_empty_plugin_key_survives_other_plugins_coming_and_going(self):
-        # Review 8 (delta-install#2): pacer saw the user's key with another plugin in it, and the
-        # user then removed that plugin with the plugin CLI. Holding only pacer's entry at the
-        # next look, the key counted as changed out of pacer's sight, so uninstall removed it.
+        # Review 8 (delta-install#2): glidepath saw the user's key with another plugin in it, and the
+        # user then removed that plugin with the plugin CLI. Holding only glidepath's entry at the
+        # next look, the key counted as changed out of glidepath's sight, so uninstall removed it.
         def other(add):
             """The user installs or removes another plugin with the plugin CLI."""
             obj = json.loads(self.read())
@@ -1482,7 +1482,7 @@ class Install(Sandbox):
     # -- ninth review ----------------------------------------------------------------
     def test_the_users_own_empty_plugin_key_survives_a_manual_mod(self):
         # Review 9 (delta-install#0): with claude off PATH at install, the user runs the printed
-        # plugin commands. Their own empty key then holds only pacer's entry, which counted as
+        # plugin commands. Their own empty key then holds only glidepath's entry, which counted as
         # the plugin CLI's for a manual mod, so uninstall removed it and rewrote the file.
         empty = '{\n  "model": "opus",\n  "enabledPlugins": {}\n}\n'
         for steps in (("iU-nobin", "mod-by-hand", "uU"), ("iP-nobin", "mod-by-hand", "uP"),
@@ -1504,7 +1504,7 @@ class Install(Sandbox):
         # Z backup, and an uninstall without install.json restored a statusLine the user removed.
         def legacy_backup(path):
             """make_backup as versions before review 8 named it: local time, no Z."""
-            name = "%s.pacer-backup-%s" % (os.path.realpath(path), time.strftime("%Y%m%d-%H%M%S"))
+            name = "%s.glidepath-backup-%s" % (os.path.realpath(path), time.strftime("%Y%m%d-%H%M%S"))
             shutil.copy2(path, name)
             return name
 
@@ -1557,9 +1557,9 @@ class Install(Sandbox):
 # to look like Windows ones; the windows-latest CI job runs the suite for real.
 PY = r"C:\Users\me\AppData\Local\Programs\Python\Python312\python.exe"
 PY_SPACE = r"C:\Program Files\Python312\python.exe"
-ENTRY = r"C:\Users\me\Claude-Code-Mods\bin\pacer"
-ENTRY_SPACE = r"C:\Users\me\My Repos\Claude-Code-Mods\bin\pacer"
-FWD = "C:/Users/me/AppData/Local/Programs/Python/Python312/python.exe -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/pacer statusline"
+ENTRY = r"C:\Users\me\Claude-Code-Mods\bin\glidepath"
+ENTRY_SPACE = r"C:\Users\me\My Repos\Claude-Code-Mods\bin\glidepath"
+FWD = "C:/Users/me/AppData/Local/Programs/Python/Python312/python.exe -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/glidepath statusline"
 GIT_BASH = r"C:\Program Files\Git\bin\bash.exe"
 PS51 = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 
@@ -1567,14 +1567,14 @@ PS51 = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 @contextlib.contextmanager
 def windows(on=True):
     """config.IS_WINDOWS, the one platform flag, set (or cleared). Off Windows the data folder
-    stays the sandbox's PACER_HOME: Windows rules would read a POSIX temp path as one
+    stays the sandbox's GLIDEPATH_HOME: Windows rules would read a POSIX temp path as one
     without a drive (and a test without a sandbox fails here rather than reach ~). No 8.3
     short paths: the fake paths may exist on a real Windows (a test gives its own)."""
     with contextlib.ExitStack() as stack:
         stack.enter_context(mock.patch.object(config, "IS_WINDOWS", on))
         stack.enter_context(mock.patch.object(winshell, "short_path", return_value=None))
         if on and os.name != "nt":
-            stack.enter_context(mock.patch.object(config, "home", lambda: os.environ["PACER_HOME"]))
+            stack.enter_context(mock.patch.object(config, "home", lambda: os.environ["GLIDEPATH_HOME"]))
         yield
 
 
@@ -1619,11 +1619,11 @@ class FakeWinreg:
 class WindowsCommand(unittest.TestCase):
     def test_posix_command_and_flags_are_unchanged(self):
         with windows(False):
-            self.assertEqual(install.our_command("/opt/my py/python3", "/x/bin/pacer", "echo 'a b'"),
-                             "'/opt/my py/python3' -I -S /x/bin/pacer statusline --compose 'echo '\"'\"'a b'\"'\"''")
+            self.assertEqual(install.our_command("/opt/my py/python3", "/x/bin/glidepath", "echo 'a b'"),
+                             "'/opt/my py/python3' -I -S /x/bin/glidepath statusline --compose 'echo '\"'\"'a b'\"'\"''")
             self.assertEqual(winshell.python_flags(), ["-I", "-S"])
-            self.assertEqual(install.launcher_name(), "pacer")
-            self.assertEqual(install.runtime_info("/usr/bin/python3", "/x/bin/pacer")["args"], ["-I", "-S"])
+            self.assertEqual(install.launcher_name(), "glidepath")
+            self.assertEqual(install.runtime_info("/usr/bin/python3", "/x/bin/glidepath")["args"], ["-I", "-S"])
 
     def test_forms_for_git_bash_and_powershell(self):
         # Unquoted forward-slash paths read the same in both shells; so do plain single quotes
@@ -1636,13 +1636,13 @@ class WindowsCommand(unittest.TestCase):
              None),
             (PY, ENTRY_SPACE, None,
              "C:/Users/me/AppData/Local/Programs/Python/Python312/python.exe -I -S -X utf8 "
-             "'C:/Users/me/My Repos/Claude-Code-Mods/bin/pacer' statusline", None, None),
+             "'C:/Users/me/My Repos/Claude-Code-Mods/bin/glidepath' statusline", None, None),
             (PY, ENTRY, "echo 'hi'", FWD + " --compose 'echo '\"'\"'hi'\"'\"''", "& " + FWD + " --compose 'echo ''hi'''",
              "per shell"),
             (PY, ENTRY, "echo \u2018hi\u2019", FWD + " --compose 'echo \u2018hi\u2019'",
              "& " + FWD + " --compose 'echo \u2018\u2018hi\u2019\u2019'", "per shell"),
-            (PY_SPACE, ENTRY, None, "'C:/Program Files/Python312/python.exe' -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/pacer "
-             "statusline", "& 'C:/Program Files/Python312/python.exe' -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/pacer "
+            (PY_SPACE, ENTRY, None, "'C:/Program Files/Python312/python.exe' -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/glidepath "
+             "statusline", "& 'C:/Program Files/Python312/python.exe' -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/glidepath "
              "statusline", "per shell"),
             (PY_SPACE, ENTRY_SPACE, "echo \u2019x\u2019 \"q\" a,b", None, None, "per shell"),
         )
@@ -1731,16 +1731,16 @@ class WindowsCommand(unittest.TestCase):
 
     def test_launcher_cmd_text(self):
         with windows():
-            text = install.launcher_text(r"C:\100%\python.exe", "C:/repo/bin/pacer")
-        self.assertEqual(text, '@echo off\r\nrem pacer launcher\r\n(goto) 2>nul & "C:\\100%%\\python.exe" -I -S -X utf8 '
-                               '"C:\\repo\\bin\\pacer" %*\r\n')
+            text = install.launcher_text(r"C:\100%\python.exe", "C:/repo/bin/glidepath")
+        self.assertEqual(text, '@echo off\r\nrem glidepath launcher\r\n(goto) 2>nul & "C:\\100%%\\python.exe" -I -S -X utf8 '
+                               '"C:\\repo\\bin\\glidepath" %*\r\n')
 
     def test_the_cmd_launcher_ends_the_batch_on_the_python_line(self):
-        # Review 15 (W-6): cmd.exe opened pacer.cmd again after python returned, to read
+        # Review 15 (W-6): cmd.exe opened glidepath.cmd again after python returned, to read
         # `exit /b`, so an uninstall run through it ended with "The batch file cannot be found."
         # and a repin to a path of another length ran the middle of the new text as a command.
         # The python call is the last line, behind the (goto) that ends the batch first.
-        for py, entry in ((PY, ENTRY), (PY_SPACE, ENTRY_SPACE), (r"C:\100%\python.exe", "C:/repo/bin/pacer")):
+        for py, entry in ((PY, ENTRY), (PY_SPACE, ENTRY_SPACE), (r"C:\100%\python.exe", "C:/repo/bin/glidepath")):
             with self.subTest(py=py):
                 with windows():
                     lines = install.launcher_text(py, entry).split("\r\n")
@@ -1749,26 +1749,26 @@ class WindowsCommand(unittest.TestCase):
                 self.assertTrue(lines[2].startswith("(goto) 2>nul & "), lines[2])
                 self.assertTrue(lines[2].endswith(" %*"), lines[2])
                 self.assertNotIn("\n", "".join(lines))  # CRLF only
-        # A launcher an older version wrote is still pacer's, so a repin rewrites it.
+        # A launcher an older version wrote is still glidepath's, so a repin rewrites it.
         with tempfile.TemporaryDirectory() as d:
-            for text in ('@echo off\r\nrem pacer launcher\r\n"C:\\py\\python.exe" -I -S -X utf8 "C:\\repo\\bin\\pacer" %*'
+            for text in ('@echo off\r\nrem glidepath launcher\r\n"C:\\py\\python.exe" -I -S -X utf8 "C:\\repo\\bin\\glidepath" %*'
                          '\r\nexit /b %ERRORLEVEL%\r\n', install.launcher_text(PY, ENTRY), "@echo mine\r\n"):
-                put(os.path.join(d, "pacer.cmd"), text)
-                self.assertEqual(install._is_launcher(os.path.join(d, "pacer.cmd")), text != "@echo mine\r\n")
+                put(os.path.join(d, "glidepath.cmd"), text)
+                self.assertEqual(install._is_launcher(os.path.join(d, "glidepath.cmd")), text != "@echo mine\r\n")
 
     def test_sh_launcher_text_for_git_bash(self):
-        # Review 15 (W-4): Git Bash never looks for pacer.cmd, so a `pacer` sh launcher sits
+        # Review 15 (W-4): Git Bash never looks for glidepath.cmd, so a `glidepath` sh launcher sits
         # beside it: forward slashes, sh quoting, the Windows flags, LF only.
         with windows():
             self.assertEqual(install.sh_launcher_text(PY, ENTRY),
-                             '#!/bin/sh\n# pacer launcher\nexec C:/Users/me/AppData/Local/Programs/Python/Python312/'
-                             'python.exe -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/pacer "$@"\n')
-            self.assertEqual(install.sh_launcher_text(PY_SPACE, r"C:\Users\Jürgen's\bin\pacer"),
-                             "#!/bin/sh\n# pacer launcher\nexec 'C:/Program Files/Python312/python.exe' -I -S -X utf8 "
-                             "'C:/Users/J\u00fcrgen'\"'\"'s/bin/pacer' \"$@\"\n")
+                             '#!/bin/sh\n# glidepath launcher\nexec C:/Users/me/AppData/Local/Programs/Python/Python312/'
+                             'python.exe -I -S -X utf8 C:/Users/me/Claude-Code-Mods/bin/glidepath "$@"\n')
+            self.assertEqual(install.sh_launcher_text(PY_SPACE, r"C:\Users\Jürgen's\bin\glidepath"),
+                             "#!/bin/sh\n# glidepath launcher\nexec 'C:/Program Files/Python312/python.exe' -I -S -X utf8 "
+                             "'C:/Users/J\u00fcrgen'\"'\"'s/bin/glidepath' \"$@\"\n")
         with windows(False):  # the macOS and Linux launcher, as before
-            self.assertEqual(install.launcher_text("/opt/my py/python3", "/x/bin/pacer"),
-                             "#!/bin/sh\n# pacer launcher\nexec '/opt/my py/python3' -I -S /x/bin/pacer \"$@\"\n")
+            self.assertEqual(install.launcher_text("/opt/my py/python3", "/x/bin/glidepath"),
+                             "#!/bin/sh\n# glidepath launcher\nexec '/opt/my py/python3' -I -S /x/bin/glidepath \"$@\"\n")
 
     @unittest.skipUnless(os.name == "posix", "runs the text in /bin/sh")
     def test_sh_launcher_for_git_bash_runs_in_sh(self):
@@ -1781,7 +1781,7 @@ class WindowsCommand(unittest.TestCase):
                        " sys.exit(3)\n")
             with windows():
                 text = install.sh_launcher_text(sys.executable, entry)
-            lp = os.path.join(d, "pacer")
+            lp = os.path.join(d, "glidepath")
             with open(lp, "wb") as f:
                 f.write(text.encode("utf-8"))
             p = subprocess.run(["/bin/sh", lp, "a b", "--x"], capture_output=True, encoding="utf-8")
@@ -1843,8 +1843,8 @@ class WindowsProbe(unittest.TestCase):
 
     def test_windows_pins_a_venvs_base_interpreter(self):
         # Review 15 verify: on Windows a venv's python.exe is a launcher that runs its base python.exe
-        # as a child, so the process running pacer had python.exe as its parent, not the shell, and the
-        # Composer fell back to predicting the shell (winshell.parent_shell). pacer runs -I -S: the venv
+        # as a child, so the process running glidepath had python.exe as its parent, not the shell, and the
+        # Composer fell back to predicting the shell (winshell.parent_shell). glidepath runs -I -S: the venv
         # adds nothing, so its base interpreter is pinned, and the report says which venv it came from.
         venv = r"C:\Users\me\proj\.venv\Scripts\python.exe"
 
@@ -1883,7 +1883,7 @@ class WindowsProbe(unittest.TestCase):
             self.assertEqual(install.probe(r"C:\x\python")[4], "not an absolute path to a .exe")
 
     def test_windows_candidates_in_order(self):
-        tmp = tempfile.mkdtemp(prefix="pacer-win-")
+        tmp = tempfile.mkdtemp(prefix="glidepath-win-")
         self.addCleanup(shutil.rmtree, tmp, True)
         local, pf = os.path.join(tmp, "Local"), os.path.join(tmp, "Program Files")
         made = []
@@ -1961,10 +1961,10 @@ class WindowsInstall(Sandbox):
         with open(install.config.runtime_path(), encoding="utf-8") as f:
             rt = json.load(f)
         self.assertEqual((rt["python"], rt["args"], rt["entry"]), (PY, ["-I", "-S", "-X", "utf8"], ENTRY))
-        lp, sh = os.path.join(bindir, "pacer.cmd"), os.path.join(bindir, "pacer")
+        lp, sh = os.path.join(bindir, "glidepath.cmd"), os.path.join(bindir, "glidepath")
         with open(lp, "rb") as f:
             self.assertEqual(f.read(), install.launcher_text(PY, ENTRY).encode("utf-8"))
-        with open(sh, "rb") as f:  # for Git Bash, which never looks for pacer.cmd
+        with open(sh, "rb") as f:  # for Git Bash, which never looks for glidepath.cmd
             self.assertEqual(f.read(), install.sh_launcher_text(PY, ENTRY).encode("utf-8"))
         self.assertEqual((install.load_state()["launcher"], install.load_state()["sh_launcher"]), (lp, sh))
         rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
@@ -1995,12 +1995,12 @@ class WindowsInstall(Sandbox):
         once = self.read()
         self.shell, self.shell_path = "powershell", PS51
         rc, out = self.run_cmd(install.install, args(self.path, apply=True))
-        self.assertIn("already runs pacer", out)
+        self.assertIn("already runs glidepath", out)
         self.assertEqual(self.read(), once)
         self.assertEqual(install.load_state()["records"][self.path][winshell.RECORD_KEY], "powershell")
 
     def doctor(self):
-        from pacer import commands
+        from glidepath import commands
 
         buf = io.StringIO()
         with redirect_stdout(buf), mock.patch.object(install, "claude_bin", lambda: None):
@@ -2052,34 +2052,34 @@ class WindowsInstall(Sandbox):
         self.assertEqual(seen[1]["OTHER"], "1")
         self.assertEqual(seen[2], seen[1])
 
-    def test_a_repin_moves_an_older_sh_launcher_to_pacer_cmd(self):
+    def test_a_repin_moves_an_older_sh_launcher_to_glidepath_cmd(self):
         bindir = os.path.join(self.dir, "bin")
         os.makedirs(bindir)
-        old = os.path.join(bindir, "pacer")
-        put(old, "#!/bin/sh\n# pacer launcher\nexec python3 x \"$@\"\n")  # what an older version wrote there
+        old = os.path.join(bindir, "glidepath")
+        put(old, "#!/bin/sh\n# glidepath launcher\nexec python3 x \"$@\"\n")  # what an older version wrote there
         os.makedirs(self.home)
         install.save_state({"launcher": old, "records": {}})
         self.write(SETTINGS)
         rc, out = self.run_cmd(install.install, args(self.path, apply=True))
         self.assertEqual(rc, 0, out)
-        # The old pacer is the sh launcher for Git Bash now (rewritten with LF), not a stale launcher.
+        # The old glidepath is the sh launcher for Git Bash now (rewritten with LF), not a stale launcher.
         with open(old, "rb") as f:
             self.assertEqual(f.read(), install.sh_launcher_text(PY, ENTRY).encode("utf-8"))
-        self.assertTrue(os.path.exists(os.path.join(bindir, "pacer.cmd")), out)
-        self.assertEqual(install.load_state()["launcher"], os.path.join(bindir, "pacer.cmd"))
+        self.assertTrue(os.path.exists(os.path.join(bindir, "glidepath.cmd")), out)
+        self.assertEqual(install.load_state()["launcher"], os.path.join(bindir, "glidepath.cmd"))
         self.assertEqual(install.load_state()["sh_launcher"], old)
         # A file of the user's in its place is theirs.
-        put(os.path.join(bindir, "pacer.cmd"), "@echo mine\r\n")
+        put(os.path.join(bindir, "glidepath.cmd"), "@echo mine\r\n")
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=bindir))
         self.assertIn("exists and is not ours", out)
         self.run_cmd(install.uninstall, args(self.path, apply=True))
-        self.assertEqual(install.read_text(os.path.join(bindir, "pacer.cmd")), "@echo mine\r\n")
+        self.assertEqual(install.read_text(os.path.join(bindir, "glidepath.cmd")), "@echo mine\r\n")
         self.assertFalse(os.path.exists(old))
 
-    def test_the_sh_launcher_follows_pacer_cmd(self):
-        # Review 15 (W-4): `pacer` was "command not found" in Git Bash and in Claude Code's Bash
-        # tool. The sh launcher beside pacer.cmd is repinned, moved and removed with it, and a
-        # file of the user's named pacer is never written over or removed.
+    def test_the_sh_launcher_follows_glidepath_cmd(self):
+        # Review 15 (W-4): `glidepath` was "command not found" in Git Bash and in Claude Code's Bash
+        # tool. The sh launcher beside glidepath.cmd is repinned, moved and removed with it, and a
+        # file of the user's named glidepath is never written over or removed.
         before = self.write(SETTINGS)
         a, b, c = (os.path.join(self.dir, n) for n in ("a", "b", "c"))
         other = r"C:\Python313\python.exe"
@@ -2088,15 +2088,15 @@ class WindowsInstall(Sandbox):
             with open(path, "rb") as f:
                 return f.read()
 
-        def check(folder, python, names=("pacer", "pacer.cmd")):
+        def check(folder, python, names=("glidepath", "glidepath.cmd")):
             self.assertEqual(sorted(os.listdir(folder)), list(names))
-            self.assertEqual(data(os.path.join(folder, "pacer.cmd")), install.launcher_text(python, ENTRY).encode("utf-8"))
-            if "pacer" in names:
-                self.assertEqual(data(os.path.join(folder, "pacer")), install.sh_launcher_text(python, ENTRY).encode("utf-8"))
+            self.assertEqual(data(os.path.join(folder, "glidepath.cmd")), install.launcher_text(python, ENTRY).encode("utf-8"))
+            if "glidepath" in names:
+                self.assertEqual(data(os.path.join(folder, "glidepath")), install.sh_launcher_text(python, ENTRY).encode("utf-8"))
 
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=a))
         self.assertEqual(rc, 0, out)
-        self.assertIn("Launcher for Git Bash: %s" % os.path.join(a, "pacer"), out)
+        self.assertIn("Launcher for Git Bash: %s" % os.path.join(a, "glidepath"), out)
         check(a, PY)
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=other))  # a repin: both follow
         self.assertEqual(rc, 0, out)
@@ -2105,43 +2105,43 @@ class WindowsInstall(Sandbox):
         self.assertEqual(rc, 0, out)
         self.assertEqual(os.listdir(a), [])
         check(b, PY)
-        os.remove(os.path.join(b, "pacer"))  # the user deleted it: only --bin-dir brings it back
+        os.remove(os.path.join(b, "glidepath"))  # the user deleted it: only --bin-dir brings it back
         for python in (other, PY):  # Review 15 verify: the 2nd repin wrote it back
             rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=python))
             self.assertEqual(rc, 0, out)
-            check(b, python, ("pacer.cmd",))
-            self.assertEqual(install.load_state()["sh_launcher"], os.path.join(b, "pacer"))  # remembered
+            check(b, python, ("glidepath.cmd",))
+            self.assertEqual(install.load_state()["sh_launcher"], os.path.join(b, "glidepath"))  # remembered
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=b))
         self.assertEqual(rc, 0, out)
         check(b, PY)
         os.makedirs(c)
-        put(os.path.join(c, "pacer"), "#!/bin/sh\necho mine\n")
+        put(os.path.join(c, "glidepath"), "#!/bin/sh\necho mine\n")
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=c))
         self.assertEqual(rc, 0, out)
-        self.assertIn("Skipped launcher: %s exists and is not ours" % os.path.join(c, "pacer"), out)
+        self.assertIn("Skipped launcher: %s exists and is not ours" % os.path.join(c, "glidepath"), out)
         self.assertEqual(os.listdir(b), [])
         self.assertNotIn("sh_launcher", install.load_state())
         rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
         self.assertEqual(rc, 0, out)
-        self.assertEqual(os.listdir(c), ["pacer"])
-        self.assertEqual(install.read_text(os.path.join(c, "pacer")), "#!/bin/sh\necho mine\n")
+        self.assertEqual(os.listdir(c), ["glidepath"])
+        self.assertEqual(install.read_text(os.path.join(c, "glidepath")), "#!/bin/sh\necho mine\n")
         self.assertEqual(self.read(), before)
 
-    def test_an_sh_launcher_kept_without_pacer_cmd_follows_the_pin(self):
-        # Review 15 verify: with pacer.cmd deleted and the sh launcher kept, a repin (often because
-        # the old Python was uninstalled) left Git Bash's `pacer` running the old interpreter.
+    def test_an_sh_launcher_kept_without_glidepath_cmd_follows_the_pin(self):
+        # Review 15 verify: with glidepath.cmd deleted and the sh launcher kept, a repin (often because
+        # the old Python was uninstalled) left Git Bash's `glidepath` running the old interpreter.
         before = self.write(SETTINGS)
         a, b = (os.path.join(self.dir, n) for n in ("a", "b"))
-        sh_a, sh_b = os.path.join(a, "pacer"), os.path.join(b, "pacer")
+        sh_a, sh_b = os.path.join(a, "glidepath"), os.path.join(b, "glidepath")
         other = r"C:\Python313\python.exe"
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=a))
         self.assertEqual(rc, 0, out)
-        os.remove(os.path.join(a, "pacer.cmd"))  # the user deleted it and kept the sh launcher
+        os.remove(os.path.join(a, "glidepath.cmd"))  # the user deleted it and kept the sh launcher
         for python in (other, PY, other):
             rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=python))
             self.assertEqual(rc, 0, out)
             self.assertIn("Wrote launcher %s" % sh_a, out)
-            self.assertEqual(os.listdir(a), ["pacer"])  # pacer.cmd stays deleted
+            self.assertEqual(os.listdir(a), ["glidepath"])  # glidepath.cmd stays deleted
             self.assertEqual(install.read_text(sh_a), install.sh_launcher_text(python, ENTRY))
             self.assertNotIn("launcher", install.load_state())
             self.assertEqual(install.load_state()["sh_launcher"], sh_a)
@@ -2150,21 +2150,21 @@ class WindowsInstall(Sandbox):
         self.assertEqual(install.read_text(sh_a), install.sh_launcher_text(other, ENTRY))
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=b))  # both, and it moves
         self.assertEqual(rc, 0, out)
-        self.assertEqual((os.listdir(a), sorted(os.listdir(b))), ([], ["pacer", "pacer.cmd"]))
+        self.assertEqual((os.listdir(a), sorted(os.listdir(b))), ([], ["glidepath", "glidepath.cmd"]))
         self.assertEqual(install.load_state()["sh_launcher"], sh_b)
-        # The same with a pacer.cmd of the user's in place of pacer's, which stays theirs.
-        put(os.path.join(b, "pacer.cmd"), "@echo mine\r\n")
+        # The same with a glidepath.cmd of the user's in place of glidepath's, which stays theirs.
+        put(os.path.join(b, "glidepath.cmd"), "@echo mine\r\n")
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=other))
-        self.assertIn("Skipped launcher: %s exists and is not ours" % os.path.join(b, "pacer.cmd"), out)
+        self.assertIn("Skipped launcher: %s exists and is not ours" % os.path.join(b, "glidepath.cmd"), out)
         self.assertEqual(install.read_text(sh_b), install.sh_launcher_text(other, ENTRY))
-        self.assertEqual(install.read_text(os.path.join(b, "pacer.cmd")), "@echo mine\r\n")
+        self.assertEqual(install.read_text(os.path.join(b, "glidepath.cmd")), "@echo mine\r\n")
         # Also when --bin-dir names that folder again (Review 15 verify: it was left on the old pin).
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=PY, bin_dir=b))
         self.assertEqual(rc, 0, out)
         self.assertEqual(install.read_text(sh_b), install.sh_launcher_text(PY, ENTRY))
-        self.assertEqual(install.read_text(os.path.join(b, "pacer.cmd")), "@echo mine\r\n")
+        self.assertEqual(install.read_text(os.path.join(b, "glidepath.cmd")), "@echo mine\r\n")
         # A file of the user's in place of the sh launcher is theirs: never written over, nor remembered.
-        os.remove(os.path.join(b, "pacer.cmd"))
+        os.remove(os.path.join(b, "glidepath.cmd"))
         put(sh_b, "#!/bin/sh\necho mine\n")
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=other))
         self.assertEqual(rc, 0, out)
@@ -2172,7 +2172,7 @@ class WindowsInstall(Sandbox):
         self.assertNotIn("sh_launcher", install.load_state())
         rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
         self.assertEqual(rc, 0, out)
-        self.assertEqual(os.listdir(b), ["pacer"])
+        self.assertEqual(os.listdir(b), ["glidepath"])
         self.assertEqual(install.read_text(sh_b), "#!/bin/sh\necho mine\n")
         self.assertEqual(self.read(), before)
 
@@ -2183,19 +2183,19 @@ class WindowsInstall(Sandbox):
         a, b = (os.path.join(self.dir, n) for n in ("a", "b"))
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=a))
         self.assertEqual(rc, 0, out)
-        os.remove(os.path.join(a, "pacer"))
+        os.remove(os.path.join(a, "glidepath"))
         for python in (r"C:\Python313\python.exe", PY, r"C:\Python313\python.exe"):
             rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=python))
             self.assertEqual(rc, 0, out)
             self.assertNotIn("Launcher for Git Bash", out)
-            self.assertEqual(os.listdir(a), ["pacer.cmd"])
-            self.assertEqual(install.read_text(os.path.join(a, "pacer.cmd")), install.launcher_text(python, ENTRY))
+            self.assertEqual(os.listdir(a), ["glidepath.cmd"])
+            self.assertEqual(install.read_text(os.path.join(a, "glidepath.cmd")), install.launcher_text(python, ENTRY))
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, bin_dir=b))  # a move brings it back
         self.assertEqual(rc, 0, out)
-        self.assertEqual((os.listdir(a), sorted(os.listdir(b))), ([], ["pacer", "pacer.cmd"]))
-        self.assertEqual(install.load_state()["sh_launcher"], os.path.join(b, "pacer"))
+        self.assertEqual((os.listdir(a), sorted(os.listdir(b))), ([], ["glidepath", "glidepath.cmd"]))
+        self.assertEqual(install.load_state()["sh_launcher"], os.path.join(b, "glidepath"))
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=PY))  # and it follows again
-        self.assertEqual(install.read_text(os.path.join(b, "pacer")), install.sh_launcher_text(PY, ENTRY))
+        self.assertEqual(install.read_text(os.path.join(b, "glidepath")), install.sh_launcher_text(PY, ENTRY))
         rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
         self.assertEqual(rc, 0, out)
         self.assertEqual(os.listdir(b), [])
@@ -2236,19 +2236,19 @@ class WindowsInstall(Sandbox):
         self.assertIn("run claude plugin marketplace add ./", out)
 
 
-@unittest.skipUnless(os.name == "nt", "runs pacer.cmd in cmd.exe")
+@unittest.skipUnless(os.name == "nt", "runs glidepath.cmd in cmd.exe")
 class CmdLauncherRuns(unittest.TestCase):
-    """Review 15 (W-6): pacer.cmd in a real cmd.exe while the program it runs rewrites or deletes
+    """Review 15 (W-6): glidepath.cmd in a real cmd.exe while the program it runs rewrites or deletes
     it, as an install or uninstall run through it does. cmd.exe used to read the batch file again
     after python returned: "The batch file cannot be found.", or the middle of the new text run as
     a command ("is not recognized"), and the exit code was not python's."""
 
     STUB = ("import os, sys\n"
-            "lp = os.environ['PACER_TEST_LAUNCHER']\n"
+            "lp = os.environ['GLIDEPATH_TEST_LAUNCHER']\n"
             "if sys.argv[1:] == ['delete']:\n"
             "    os.remove(lp)\n"
             "elif sys.argv[1:] == ['rewrite']:\n"
-            "    with open(os.environ['PACER_TEST_NEXT'], 'rb') as f, open(lp, 'wb') as g:\n"
+            "    with open(os.environ['GLIDEPATH_TEST_NEXT'], 'rb') as f, open(lp, 'wb') as g:\n"
             "        g.write(f.read())\n"
             "sys.exit(3)\n")
 
@@ -2257,14 +2257,14 @@ class CmdLauncherRuns(unittest.TestCase):
         others = (None, r"C:\a\much\longer\folder\of\another\interpreter\python.exe", r"C:\py\python.exe")
         for action, other in (("run", None), ("delete", None), ("rewrite", others[1]), ("rewrite", others[2])):
             with self.subTest(action=action, other=other), tempfile.TemporaryDirectory() as d:
-                stub, lp, nxt = (os.path.join(d, n) for n in ("stub.py", "pacer.cmd", "next.cmd"))
+                stub, lp, nxt = (os.path.join(d, n) for n in ("stub.py", "glidepath.cmd", "next.cmd"))
                 put(stub, self.STUB)
                 with open(lp, "wb") as f:
                     f.write(install._launcher_bytes(sys.executable, stub))
                 with open(nxt, "wb") as f:
                     f.write(install._launcher_bytes(other or sys.executable, stub))
-                env = dict(os.environ, PACER_TEST_LAUNCHER=lp, PACER_TEST_NEXT=nxt)
-                p = subprocess.run([comspec, "/d", "/c", "pacer.cmd", action], cwd=d, env=env, capture_output=True,
+                env = dict(os.environ, GLIDEPATH_TEST_LAUNCHER=lp, GLIDEPATH_TEST_NEXT=nxt)
+                p = subprocess.run([comspec, "/d", "/c", "glidepath.cmd", action], cwd=d, env=env, capture_output=True,
                                    timeout=60)
                 self.assertEqual((p.returncode, p.stdout, p.stderr), (3, b"", b""))
                 self.assertEqual(os.path.exists(lp), action != "delete")
@@ -2464,7 +2464,7 @@ class WindowsEncodedCompose(unittest.TestCase):
     )
 
     def test_each_shell_hands_python_the_command_as_written(self):
-        from pacer import statusline
+        from glidepath import statusline
 
         with windows():
             for compose, enc in self.CASES:
@@ -2485,12 +2485,12 @@ class WindowsEncodedCompose(unittest.TestCase):
     def test_macos_and_linux_never_encode(self):
         with windows(False):
             for compose, _ in self.CASES:
-                cmd = install.our_command("/usr/bin/python3", "/x/bin/pacer", compose)
+                cmd = install.our_command("/usr/bin/python3", "/x/bin/glidepath", compose)
                 self.assertNotIn(winshell.COMPOSE_B64, cmd)
                 self.assertEqual(install.split_command(cmd)[4:], ["statusline", "--compose", compose])
                 self.assertEqual(install.compose_of(cmd), compose)
             # One written on Windows and synced here reads the same.
-            cmd = "/usr/bin/python3 -I -S /x/bin/pacer statusline --compose-b64 " + winshell.encoded('echo "x"')
+            cmd = "/usr/bin/python3 -I -S /x/bin/glidepath statusline --compose-b64 " + winshell.encoded('echo "x"')
             self.assertEqual(install.compose_of(cmd), 'echo "x"')
 
     def test_a_malformed_token_is_no_composed_command(self):
@@ -2504,7 +2504,7 @@ class WindowsEncodedCompose(unittest.TestCase):
             want, _ = install.plan_statusline({"type": "command", "command": old}, PY, ENTRY, shell="bash")
             self.assertEqual(want["command"], FWD + " --compose-b64 " + winshell.encoded(old))
             self.assertEqual(install.plan_statusline(want, PY, ENTRY, shell="powershell"),
-                             (None, "statusLine already runs pacer"))
+                             (None, "statusLine already runs glidepath"))
             plain = dict(want, command=FWD + " --compose '%s'" % old)  # what an older install wrote
             self.assertEqual(install.plan_statusline(plain, PY, ENTRY, shell="bash")[0], want)
             dropped, note = install.plan_statusline(want, PY, ENTRY, replace=True, shell="bash")
@@ -2512,10 +2512,10 @@ class WindowsEncodedCompose(unittest.TestCase):
             self.assertIn("REPLACE", note)
 
     def test_with_both_flags_every_reader_takes_the_last_one(self):
-        # Review 15 verify: pacer statusline runs the last --compose or --compose-b64, while install
+        # Review 15 verify: glidepath statusline runs the last --compose or --compose-b64, while install
         # read the first, so after a hand edit that added one, doctor showed another command than the
         # one running, and a repin wrote the old one back in its place.
-        from pacer import statusline
+        from glidepath import statusline
 
         def running(cmd):
             words = install.split_command(cmd)
@@ -2533,16 +2533,16 @@ class WindowsEncodedCompose(unittest.TestCase):
                     try:
                         runs = running(cmd)
                     except ValueError:
-                        runs = None  # pacer statusline prints its bare line: no composed command runs
+                        runs = None  # glidepath statusline prints its bare line: no composed command runs
                     self.assertEqual((install.compose_of(cmd), runs), (want, want))
                     repin, _ = install.plan_statusline({"type": "command", "command": cmd}, PY_SPACE, ENTRY,
                                                        shell="bash")
                     self.assertEqual((install.compose_of(repin["command"]), running(repin["command"])), (want, want))
         with windows(False):
-            posix = install.our_command("/usr/bin/python3", "/x/bin/pacer", old) + " --compose '%s'" % mine
+            posix = install.our_command("/usr/bin/python3", "/x/bin/glidepath", old) + " --compose '%s'" % mine
             self.assertEqual((install.compose_of(posix), running(posix)), (mine, mine))
             repin, _ = install.plan_statusline({"type": "command", "command": posix}, "/opt/py/bin/python3",
-                                               "/x/bin/pacer")
+                                               "/x/bin/glidepath")
             self.assertEqual(install.split_command(repin["command"])[4:], ["statusline", "--compose", mine])
 
     def test_8dot3_short_paths_when_they_need_no_quotes(self):
@@ -2553,7 +2553,7 @@ class WindowsEncodedCompose(unittest.TestCase):
         with windows():
             with mock.patch.object(winshell, "short_path", lambda p: SHORT_PATH(p, shorts.get)):
                 cmd = install.our_command(PY_SPACE, ENTRY_SPACE, "echo hi", "powershell")
-                self.assertEqual(cmd, "C:/PROGRA~1/PYTHON~1/python.exe -I -S -X utf8 C:/Users/me/MYREPO~1/CLAUDE~1/bin/pacer "
+                self.assertEqual(cmd, "C:/PROGRA~1/PYTHON~1/python.exe -I -S -X utf8 C:/Users/me/MYREPO~1/CLAUDE~1/bin/glidepath "
                                       "statusline --compose 'echo hi'")
                 self.assertTrue(winshell.reads_alike(cmd))
                 self.assertTrue(install.is_ours(cmd))
@@ -2562,7 +2562,7 @@ class WindowsEncodedCompose(unittest.TestCase):
                 with mock.patch.object(winshell, "short_path", lambda p: SHORT_PATH(p, short)):
                     self.assertEqual(install.our_command(PY_SPACE, ENTRY, None, "bash"),
                                      "'C:/Program Files/Python312/python.exe' -I -S -X utf8 "
-                                     "C:/Users/me/Claude-Code-Mods/bin/pacer statusline")
+                                     "C:/Users/me/Claude-Code-Mods/bin/glidepath statusline")
 
 
 class WindowsShellNotes(Sandbox):
@@ -2594,11 +2594,11 @@ class WindowsShellNotes(Sandbox):
                 self.assertEqual(json.loads(self.read())["statusLine"]["command"],
                                  FWD + " --compose-b64 " + winshell.encoded(old))
                 self.assertIn("note: your previous statusLine is stored base64-encoded after --compose-b64, since %s; "
-                              "`pacer doctor` shows it decoded" % why, out)
+                              "`glidepath doctor` shows it decoded" % why, out)
                 self.assertIn("the command reads the same in Git Bash and PowerShell", out)
                 self.assertNotIn("warning", out)
                 rc, out = self.run_cmd(install.install, args(self.path, apply=True))
-                self.assertIn("already runs pacer", out)
+                self.assertIn("already runs glidepath", out)
                 rc, out = self.run_cmd(install.uninstall, args(self.path, apply=True))
                 self.assertEqual(rc, 0, out)
                 self.assertEqual(self.read(), before)
@@ -2615,7 +2615,7 @@ class WindowsShellNotes(Sandbox):
         self.write(SETTINGS)
         rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=PY_SPACE))
         self.assertIn("warning: this command runs only in Git Bash; after installing or removing Git for Windows, or "
-                      "setting CLAUDE_CODE_GIT_BASH_PATH, run `pacer install --apply` again (`pacer doctor` checks this)",
+                      "setting CLAUDE_CODE_GIT_BASH_PATH, run `glidepath install --apply` again (`glidepath doctor` checks this)",
                       out)
         self.assertNotIn("Git Bash terminal", out)
         self.shell, self.shell_path = "powershell", PS51
@@ -2625,7 +2625,7 @@ class WindowsShellNotes(Sandbox):
         os.environ["MSYSTEM"] = "MINGW64"
         rc, out = self.run_cmd(install.install, args(self.path, python=PY_SPACE))
         self.assertIn("note: Claude Code started from this Git Bash terminal can pick another shell than when started "
-                      "from the Desktop app or PowerShell; run `pacer doctor` from PowerShell to check", out)
+                      "from the Desktop app or PowerShell; run `glidepath doctor` from PowerShell to check", out)
         # A command that reads the same in both shells needs neither.
         self._reset()
         self.write(SETTINGS)
@@ -2642,7 +2642,7 @@ class WindowsShellNotes(Sandbox):
             rc, out = self.run_cmd(install.install, args(self.path, apply=True, python=PY_SPACE))
             self.assertEqual(rc, 0, out)
             self.assertEqual(json.loads(self.read())["statusLine"]["command"],
-                             "C:/PROGRA~1/PYTHON~1/python.exe -I -S -X utf8 C:/Users/me/MYREPO~1/CLAUDE~1/bin/pacer "
+                             "C:/PROGRA~1/PYTHON~1/python.exe -I -S -X utf8 C:/Users/me/MYREPO~1/CLAUDE~1/bin/glidepath "
                              "statusline")
             self.assertIn("the command reads the same in Git Bash and PowerShell", out)
             self.assertNotIn("warning", out)
@@ -2668,7 +2668,7 @@ class WindowsReadme(unittest.TestCase):
 
     def test_the_example_command_is_the_one_install_writes(self):
         sec = self.section()
-        example = re.search(r"`(C:/\S+/python\.exe -I -S -X utf8 C:/\S+/bin/pacer statusline)`", sec).group(1)
+        example = re.search(r"`(C:/\S+/python\.exe -I -S -X utf8 C:/\S+/bin/glidepath statusline)`", sec).group(1)
         argv = example.split()
         short = re.search(r"`(C:/PROGRA~1/\S+/python\.exe)`", sec).group(1)
         shorts = {r"C:\Program Files\Python312": short.rsplit("/", 1)[0].replace("/", "\\")}
@@ -2682,7 +2682,7 @@ class WindowsReadme(unittest.TestCase):
 
     def test_what_goes_encoded_and_the_home_forms_it_names(self):
         sec = self.section()
-        for word in ("--compose-b64", "/usr/bin/env", "`~\\x`", "`C:\\x`", "`C:/x`", "`/c/x`", "`/srv/pacer`"):
+        for word in ("--compose-b64", "/usr/bin/env", "`~\\x`", "`C:\\x`", "`C:/x`", "`/c/x`", "`/srv/glidepath`"):
             self.assertIn(word, sec)
         self.assertTrue(winshell.needs_encoding('echo "mine"'))  # Windows PowerShell 5.1
         self.assertTrue(winshell.needs_encoding("/usr/bin/env bash ~/.claude/statusline.sh"))  # Git Bash
@@ -2693,7 +2693,7 @@ class WindowsReadme(unittest.TestCase):
                                 ("%USERPROFILE%\\x", user + "\\%USERPROFILE%\\x")):
                 self.assertEqual(config.windows_home(value), want, value)
             with self.assertRaises(config.HomeError):
-                config.windows_home("/srv/pacer")
+                config.windows_home("/srv/glidepath")
             self.assertIn("`C:x`", sec)  # refused by the CLI too since review 15 verify
             with self.assertRaises(config.HomeError):
                 config.windows_home("C:x")
@@ -2703,8 +2703,8 @@ class WindowsReadme(unittest.TestCase):
         # stays at risk until an install encodes it again; Windows PowerShell 5.1 has no `&&`, and
         # cmd.exe passes `# ...` on as arguments; an unquoted %USERPROFILE% splits at a space.
         sec = " ".join(self.section().split())
-        self.assertIn("put `--compose '<command>'` in its place, then run `pacer install --apply`, which encodes "
-                      "it again when a shell would change it (until then `pacer doctor` warns)", sec)
+        self.assertIn("put `--compose '<command>'` in its place, then run `glidepath install --apply`, which encodes "
+                      "it again when a shell would change it (until then `glidepath doctor` warns)", sec)
         hand = FWD + " --compose '%s'" % 'node "C:/Users/John Smith/sl.js"'
         with windows():
             want, _ = install.plan_statusline({"type": "command", "command": hand}, PY, ENTRY, shell="bash")

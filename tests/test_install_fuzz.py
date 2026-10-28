@@ -2,21 +2,21 @@
 
 Random sequences (fixed seeds, so every run is the same) of installs into the
 user file or a project file, uninstalls (some with --no-mod), claude coming
-and going, the user running the plugin commands pacer printed by hand,
+and going, the user running the plugin commands glidepath printed by hand,
 the data folder wiped (install.json and runtime.json lost), and the user
-editing either file between steps, the command inside pacer's --compose
+editing either file between steps, the command inside glidepath's --compose
 included. A model tracks what each file holds for the user: its first content
 with the user's edits applied. After every step, while a mod record remains,
 runtime.json exists (the mod reads it). Once claude is back and everything is
-uninstalled, pacer must have left no trace: no records, no mod, no
+uninstalled, glidepath must have left no trace: no records, no mod, no
 runtime.json, each file's JSON is the user's (with the user's own statusLine
-and no pacer plugin keys), and a file the user never edited is byte for byte
+and no glidepath plugin keys), and a file the user never edited is byte for byte
 what it was, or still absent. Where only install.json knew and the folder was
-wiped, or the plugin CLI run by hand rewrote the user file out of pacer's
+wiped, or the plugin CLI run by hand rewrote the user file out of glidepath's
 sight, a check is narrowed for exactly that case (see World.run and World.step).
 
 A failure prints the seed and the steps. To replay one seed with each step's
-output: PACER_FUZZ_SEED=<seed> python3 -m unittest tests.test_install_fuzz
+output: GLIDEPATH_FUZZ_SEED=<seed> python3 -m unittest tests.test_install_fuzz
 """
 
 import io
@@ -33,7 +33,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from pacer import config, install, winshell
+from glidepath import config, install, winshell
 
 from . import test_install as ti
 
@@ -52,7 +52,7 @@ INITIAL = {
     "plugins": ti.WITH_PLUGINS,
 }
 CLAUDE = ("ok", "missing", "hang")
-# What the user puts inside pacer's --compose (the last one is their own statusLine's).
+# What the user puts inside glidepath's --compose (the last one is their own statusLine's).
 COMPOSE = ("~/bin/other.sh", "echo 'hi there'", "~/bin/line.sh")
 
 
@@ -83,7 +83,7 @@ def fast_python(explicit=None):
 
 def quoted(cmd, argv):
     """argv written back as the user would edit it, in the syntax cmd is written in: sh
-    quoting, or on Windows PowerShell's (`& '...'`) when pacer wrote that."""
+    quoting, or on Windows PowerShell's (`& '...'`) when glidepath wrote that."""
     if install.command_shell(cmd) == "powershell":
         return "& " + " ".join(a if a.startswith("-") or a in ("utf8", "statusline") else winshell.quote(a, "powershell")
                                for a in argv)
@@ -131,9 +131,9 @@ class World:
         self.paths = {"U": os.path.join(root, "claude", "settings.json"),
                       "P": os.path.join(root, "proj", ".claude", "settings.json")}
         # Files whose bytes are not promised (their JSON still is): the user edited them, the
-        # data folder was wiped while pacer or the plugin CLI had changed them (their
+        # data folder was wiped while glidepath or the plugin CLI had changed them (their
         # baselines went with install.json), or the plugin CLI run by hand rewrote the user
-        # file where pacer could not tell it from a user's reformat (see step and run).
+        # file where glidepath could not tell it from a user's reformat (see step and run).
         self.initial, self.user, self.nobytes = {}, {}, set()
         for f, kind in initial.items():
             os.makedirs(os.path.dirname(self.paths[f]))
@@ -150,7 +150,7 @@ class World:
         # the user file's plugin keys that may be left empty.
         self.blind, self.deleted, self.empty_keys = set(), {}, set()
         self.hand_text = None  # the user file as the reverse plugin commands run by hand left it
-        self.unseen = False  # the user file's plugin keys went (deleted or blanked), and pacer has not looked since
+        self.unseen = False  # the user file's plugin keys went (deleted or blanked), and glidepath has not looked since
 
     def text(self, f):
         return install.read_text(self.paths[f]) if os.path.exists(self.paths[f]) else None
@@ -163,7 +163,7 @@ class World:
         exe, cli = {"ok": ("/bin/claude", ti.plugin_cli(self.paths["U"])), "missing": (None, ti.claude_missing),
                     "hang": ("/bin/claude", hang)}[self.claude]
         if fn is install.install and self.hand_text is not None and self.text("U") == self.hand_text:
-            # The plugin CLI, run by hand, rewrote the user file out of pacer's sight, so
+            # The plugin CLI, run by hand, rewrote the user file out of glidepath's sight, so
             # this install may take it as is for the file's baseline (D-18: the file as it
             # is then, its own backup), the plugin CLI's formatting included.
             self.nobytes.add("U")
@@ -175,11 +175,11 @@ class World:
         if (fn is install.uninstall or not kw.get("no_mod")) and "error:" not in buf.getvalue():
             self.unseen = False  # it looked at the user file's plugin keys
         for f in "UP" if self.lost else ():
-            # After a wipe, with no backup from before pacer left, nothing tells whether the
-            # refreshInterval beside a command restored from --compose was pacer's: it stays.
+            # After a wipe, with no backup from before glidepath left, nothing tells whether the
+            # refreshInterval beside a command restored from --compose was glidepath's: it stays.
             sl, want = load(self.text(f)).get("statusLine"), self.user[f].get("statusLine")
             if isinstance(want, dict) and "refreshInterval" not in want and sl == dict(want, refreshInterval=60) \
-                    and not any(self.before_pacer(b) for b in self.backups(f)):
+                    and not any(self.before_glidepath(b) for b in self.backups(f)):
                 self.user[f]["statusLine"] = sl
         return rc
 
@@ -189,9 +189,9 @@ class World:
 
     def backups(self, f):
         folder, name = os.path.split(os.path.realpath(self.paths[f]))
-        return {os.path.join(folder, n) for n in os.listdir(folder) if n.startswith(name + ".pacer-backup-")}
+        return {os.path.join(folder, n) for n in os.listdir(folder) if n.startswith(name + ".glidepath-backup-")}
 
-    def before_pacer(self, backup):
+    def before_glidepath(self, backup):
         sl = load(install.read_text(backup)).get("statusLine")
         return not (isinstance(sl, dict) and install.is_ours(sl.get("command")))
 
@@ -207,17 +207,17 @@ class World:
             _, f, what = s.split()
             self.edit(f, what)
         elif s.endswith("-by-hand"):
-            # The commands pacer printed, at install or at an uninstall that failed. Only
+            # The commands glidepath printed, at install or at an uninstall that failed. Only
             # while it has a mod record: run while it has none (after a wipe), the reverse
-            # commands leave the plugin CLI's empty keys behind, and nothing tells pacer.
+            # commands leave the plugin CLI's empty keys behind, and nothing tells glidepath.
             if "mod" in install.load_state():
                 before = self.text("U")
                 by_hand(self.paths["U"], install.mod_commands(install.repo_root()) if s == "mod-by-hand"
                         else install.unmod_commands())
                 if s == "mod-by-hand" and self.unseen and self.text("U") != before \
                         and not install.load_state()["mod"].get("manual"):
-                    # The plugin CLI wrote pacer's entries into keys the user removed (deleted or
-                    # blanked the file) before pacer looked, and the mod is not manual, so pacer
+                    # The plugin CLI wrote glidepath's entries into keys the user removed (deleted or
+                    # blanked the file) before glidepath looked, and the mod is not manual, so glidepath
                     # takes the CLI's writes for its own. It next finds keys that hold only its
                     # entries, as the user's own keys do after the user removed their other plugins
                     # with the plugin CLI (D-18, review 8): it cannot tell the two apart and keeps
@@ -226,13 +226,13 @@ class World:
                 if s == "unmod-by-hand" and self.text("U") != before:
                     self.hand_text = self.text("U")
                     if install.load_state()["mod"].get("manual"):
-                        # pacer never saw the plugin CLI write there (the mod listed only between
+                        # glidepath never saw the plugin CLI write there (the mod listed only between
                         # the two by-hand runs), so it never rewrites the file (D-18): the CLI's
                         # formatting stays, as a reformat by the user would.
                         self.nobytes.add("U")
                     if self.unseen:
                         # The plugin CLI wrote the keys the user removed and emptied them again
-                        # before pacer looked (D-18: when pacer next looks): an empty one is
+                        # before glidepath looked (D-18: when glidepath next looks): an empty one is
                         # the user's for all it can tell, as at a wipe below.
                         self.loose_empty_keys()
         elif s == "wipe":  # the user deletes the data folder: install.json and runtime.json go
@@ -240,13 +240,13 @@ class World:
                 if self.text(f) != self.initial[f]:
                     self.nobytes.add(f)  # its baselines went with install.json
                 if f in self.deleted and self.ours(f) and \
-                        not any(self.before_pacer(b) for b in self.backups(f) - self.deleted[f]):
-                    # The user deleted it after its newest backup from before pacer, and install
+                        not any(self.before_glidepath(b) for b in self.backups(f) - self.deleted[f]):
+                    # The user deleted it after its newest backup from before glidepath, and install
                     # created it again (no file, no backup): only install.json knew, so uninstall
                     # takes the statusLine from that older backup.
                     self.blind.add(f)
-            # A plugin key the reverse commands run by hand left empty: for all pacer can tell
-            # now, it is the user's, until the plugin CLI writes pacer's entry there again and
+            # A plugin key the reverse commands run by hand left empty: for all glidepath can tell
+            # now, it is the user's, until the plugin CLI writes glidepath's entry there again and
             # it is not (D-18), so it may stay empty or go.
             self.loose_empty_keys()
             shutil.rmtree(config.home(), ignore_errors=True)
@@ -265,7 +265,7 @@ class World:
     def edit(self, f, what):
         """The user edits the file by hand; the model follows."""
         text = self.text(f)
-        if what.startswith("compose="):  # the command inside pacer's --compose: now the user's statusLine
+        if what.startswith("compose="):  # the command inside glidepath's --compose: now the user's statusLine
             if not self.ours(f):
                 return
             obj, x = load(text), COMPOSE[int(what.split("=")[1])]
@@ -299,7 +299,7 @@ class World:
             if not (text and text.strip()):
                 return
             self.write(f, json.dumps(json.loads(text), indent=4, ensure_ascii=False) + "\n")
-        else:  # add or change a key pacer has nothing to do with
+        else:  # add or change a key glidepath has nothing to do with
             key, value = what.split("=")
             obj = load(text)
             eol = "\r\n" if text and "\r\n" in text else "\n"
@@ -315,7 +315,7 @@ class World:
 
     def finish(self):
         """Claude back, then uninstall whatever is installed until nothing is: after a
-        wipe, also each file still running pacer, and the mod the user file lists."""
+        wipe, also each file still running glidepath, and the mod the user file lists."""
         self.claude = "ok"
         for _ in range(4):
             state = install.load_state()
@@ -346,10 +346,10 @@ class World:
             want = self.user[f]
             if f == "U" and isinstance(got, dict):
                 got = {k: v for k, v in got.items() if not (k in self.empty_keys and v == {} and k not in want)}
-            if f in self.blind and isinstance(got, dict):  # its statusLine only needs to be the user's, not pacer's
+            if f in self.blind and isinstance(got, dict):  # its statusLine only needs to be the user's, not glidepath's
                 sl = got.get("statusLine")
                 if isinstance(sl, dict) and install.is_ours(sl.get("command")):
-                    out.append("%s still runs pacer: %r" % (f, sl))
+                    out.append("%s still runs glidepath: %r" % (f, sl))
                 got, want = ({k: v for k, v in o.items() if k != "statusLine"} for o in (got, want))
             if got != want:
                 out.append("%s holds %r, the user's is %r" % (f, got, want))
@@ -361,8 +361,8 @@ class World:
 def run_sequence(seed):
     """(initial, claude, steps, problems, trace) for one seed, in its own temp dirs."""
     initial, claude, steps = generate(seed)
-    root = tempfile.mkdtemp(prefix="pacer-fuzz-")
-    env = {"PACER_HOME": os.path.join(root, "home"), "CLAUDE_CONFIG_DIR": os.path.join(root, "claude"),
+    root = tempfile.mkdtemp(prefix="glidepath-fuzz-")
+    env = {"GLIDEPATH_HOME": os.path.join(root, "home"), "CLAUDE_CONFIG_DIR": os.path.join(root, "claude"),
            "HOME": os.path.join(root, "userhome"), "USERPROFILE": os.path.join(root, "userhome")}
     problems, world = [], None
     try:
@@ -390,7 +390,7 @@ def describe(seed, initial, claude, steps, problems, trace=()):
 
 class Fuzz(unittest.TestCase):
     def test_random_sequences_leave_no_trace(self):
-        replay = os.environ.get("PACER_FUZZ_SEED")
+        replay = os.environ.get("GLIDEPATH_FUZZ_SEED")
         seeds = [int(replay)] if replay else range(SEQUENCES)
         failures = []
         for seed in seeds:
@@ -400,7 +400,7 @@ class Fuzz(unittest.TestCase):
                     print("== %s -> %d\n%s" % (name, rc, out))
             if problems:
                 failures.append(describe(seed, initial, claude, steps, problems, trace))
-        self.assertFalse(failures, "%d of %d sequences failed (replay one with PACER_FUZZ_SEED=<seed>):\n%s" % (
+        self.assertFalse(failures, "%d of %d sequences failed (replay one with GLIDEPATH_FUZZ_SEED=<seed>):\n%s" % (
             len(failures), len(seeds), "\n".join(failures[:10])))
 
 

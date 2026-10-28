@@ -9,13 +9,13 @@ import time
 import unittest
 from unittest import mock
 
-from pacer import config
-from pacer.store import SCHEMA_VERSION, Store
+from glidepath import config
+from glidepath.store import SCHEMA_VERSION, Store
 
 
 class FirstOpen(unittest.TestCase):
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="pacer-test-")
+        self.dir = tempfile.mkdtemp(prefix="glidepath-test-")
         self.path = os.path.join(self.dir, "tempo.db")
         # Another opener of the same new file in the middle of its own first
         # open: it holds the write lock that the switch to WAL needs.
@@ -54,7 +54,7 @@ class FirstOpen(unittest.TestCase):
             opened.append(real(*a, **kw))
             return opened[-1]
 
-        with mock.patch("pacer.store.sqlite3.connect", connect):
+        with mock.patch("glidepath.store.sqlite3.connect", connect):
             with self.assertRaises(sqlite3.OperationalError):
                 Store(self.path, timeout_ms=100)
         self.assertGreaterEqual(time.monotonic() - t, 0.09)
@@ -72,7 +72,7 @@ class CloseOnWindows(unittest.TestCase):
         # deleting the WAL) took 18 ms of a 30 ms render, p95 32 of 44.
         for windows in (True, False):
             with self.subTest(windows=windows), mock.patch.object(config, "IS_WINDOWS", windows):
-                d = tempfile.mkdtemp(prefix="pacer-test-")
+                d = tempfile.mkdtemp(prefix="glidepath-test-")
                 self.addCleanup(shutil.rmtree, d, True)
                 path = os.path.join(d, "tempo.db")
                 st = Store(path)
@@ -87,15 +87,15 @@ class CloseOnWindows(unittest.TestCase):
     def test_a_large_wal_is_emptied_on_close_unless_someone_reads_it(self):
         # Review 15 verify: a lone opener rebuilt the WAL index with nothing marked as copied,
         # so past 1000 pages every recording render copied the whole WAL into the database.
-        d = tempfile.mkdtemp(prefix="pacer-test-")
+        d = tempfile.mkdtemp(prefix="glidepath-test-")
         self.addCleanup(shutil.rmtree, d, True)
         path = os.path.join(d, "tempo.db")
-        with mock.patch.object(config, "IS_WINDOWS", True), mock.patch("pacer.store.WAL_RESET_BYTES", 256 * 1024):
+        with mock.patch.object(config, "IS_WINDOWS", True), mock.patch("glidepath.store.WAL_RESET_BYTES", 256 * 1024):
             st = Store(path)
             st.meta_set("small", "x")
             st.close()
             self.assertGreater(os.path.getsize(path + "-wal"), 0)  # small: kept
-            reader = sqlite3.connect(path, isolation_level=None)  # another pacer process on Windows
+            reader = sqlite3.connect(path, isolation_level=None)  # another glidepath process on Windows
             reader.setconfig(sqlite3.SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE, True)
             reader.execute("BEGIN")
             reader.execute("SELECT COUNT(*) FROM meta").fetchone()  # a snapshot another process holds

@@ -1,24 +1,8 @@
 #!/usr/bin/env python3
-"""Launcher: puts the repo on sys.path and runs pacer.
-
-Works under `python -I -S` (isolated, no site), which is how the installed
-statusLine command runs it: stdlib only, nothing from PYTHONPATH or conda.
-"""
+"""glidepath was called pacer: statusLine commands, SwiftBar plugins and launchers
+written before the rename run this file. It runs glidepath; `glidepath install
+--apply` rewrites them to bin/glidepath (glidepath/legacy.py)."""
 import os
-import sys
+import runpy
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-
-if os.name == "nt":  # a TZ the C runtime misreads goes before anything reads local time
-    from pacer.clock import windows_tz
-
-    windows_tz()
-
-if len(sys.argv) > 1 and sys.argv[1] == "statusline":
-    from pacer.statusline import main
-
-    sys.exit(main(sys.argv[2:]))
-
-from pacer.cli import main  # noqa: E402
-
-sys.exit(main(sys.argv[1:]))
+runpy.run_path(os.path.join(os.path.dirname(os.path.realpath(__file__)), "glidepath"), run_name="__main__")

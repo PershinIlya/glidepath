@@ -1,14 +1,14 @@
 {
-  "name": "pacer",
-  "description": "pacer for Claude Code: the usage pace mod",
+  "name": "glidepath",
+  "description": "glidepath for Claude Code: the usage pace mod",
   "owner": {
     "name": "Ilia Pershin",
     "url": "https://github.com/PershinIlya"
   },
   "plugins": [
     {
-      "name": "pacer",
-      "source": "./mods/pacer",
+      "name": "glidepath",
+      "source": "./mods/glidepath",
       "description": "Know if your Claude Code usage will last until the reset: the 5-hour and weekly pace above the prompt"
     }
   ]

@@ -1,8 +1,22 @@
 # Changelog
 
+## 0.2.0 (2026-10)
+
+pacer is now **glidepath**. Four other tools in the same niche were called
+pacer or nearly, two of them with a `pacer` command.
+
+- `git pull`, then `glidepath install --apply` (Windows: `py -3 bin\glidepath
+  install --apply`) moves an install made as pacer or ctempo: the data
+  folder to `~/.glidepath`, the mod to `glidepath@glidepath`, SwiftBar's
+  plugin to `glidepath.1m.sh`, the status line to `bin/glidepath`. Until
+  then `bin/pacer`, `PACER_HOME` and `~/.pacer` keep working.
+- The repository moves to https://github.com/PershinIlya/glidepath (the old
+  addresses redirect).
+- The README compares glidepath with similar tools.
+
 ## 0.1.0 (2026-10)
 
-First public release.
+First public release, as pacer.
 
 - The 5-hour and weekly pace in the Claude Code status line, a band above
   the prompt in the Claude Desktop Code tab, and the macOS menu bar

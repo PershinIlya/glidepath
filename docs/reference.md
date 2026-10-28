@@ -1,29 +1,29 @@
 # Reference
 
-Commands, configuration, what pacer keeps, and how fast it is. Tests are in
+Commands, configuration, what glidepath keeps, and how fast it is. Tests are in
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `pacer statusline` | reads the status-line JSON on stdin, records a sample, prints the line (`--format json` for the mod) |
-| `pacer now` | the line plus the reasoning: rates, allowed rates, on-pace level, intensity, projections, exchange rate, and the age of the last reading (heartbeats shown apart) |
-| `pacer report [--days N]` | waste ledger: % unused at each closed weekly and 5-hour window, totals, in 5h-window equivalents |
-| `pacer profile [--rebuild]` | hour-of-week heatmap, the prior's age and weight now, lightest awake blocks, points vs pace by day before reset |
-| `pacer check [--min-free X] [--tail 5h=60m,week=2d] [--max-age 30m]` | for a future scavenger: exit 0 and JSON when there is quota to harvest now, else exit 1; data older than `--max-age` is a no-go, and heartbeats do not count as data; so is a 5h window whose burn rate is not known yet (its leftover is unknown); spare quota is measured against each window's target (`spare` in the JSON), so a window at or above a target below 100, or one that should slow down, is never harvestable; `--min-free` is clamped to 0 to 100 like `min_free`, and a leftover counts only when it is at least that and more than 0 |
-| `pacer bootstrap [--days N] [--dry-run]` | rebuild the profile prior from transcripts |
-| `pacer install` / `uninstall` | see above; dry run unless `--apply` |
-| `pacer doctor` | interpreter, database, settings wiring, mod, last samples, last line and the raw rate limits it came from, rate-limit kinds seen; on Windows, the shell Claude Code runs the status line in and whether the command suits it |
-| `pacer fetch [--every MIN]` | ask Claude Code's `/usage` for the account's levels now, or from now on every MIN minutes (0: never) |
-| `pacer menubar [--install|--uninstall]` | the band in the macOS menu bar (SwiftBar) |
-| `pacer config [show|init|path]` | effective configuration |
+| `glidepath statusline` | reads the status-line JSON on stdin, records a sample, prints the line (`--format json` for the mod) |
+| `glidepath now` | the line plus the reasoning: rates, allowed rates, on-pace level, intensity, projections, exchange rate, and the age of the last reading (heartbeats shown apart) |
+| `glidepath report [--days N]` | waste ledger: % unused at each closed weekly and 5-hour window, totals, in 5h-window equivalents |
+| `glidepath profile [--rebuild]` | hour-of-week heatmap, the prior's age and weight now, lightest awake blocks, points vs pace by day before reset |
+| `glidepath check [--min-free X] [--tail 5h=60m,week=2d] [--max-age 30m]` | for a future scavenger: exit 0 and JSON when there is quota to harvest now, else exit 1; data older than `--max-age` is a no-go, and heartbeats do not count as data; so is a 5h window whose burn rate is not known yet (its leftover is unknown); spare quota is measured against each window's target (`spare` in the JSON), so a window at or above a target below 100, or one that should slow down, is never harvestable; `--min-free` is clamped to 0 to 100 like `min_free`, and a leftover counts only when it is at least that and more than 0 |
+| `glidepath bootstrap [--days N] [--dry-run]` | rebuild the profile prior from transcripts |
+| `glidepath install` / `uninstall` | see above; dry run unless `--apply` |
+| `glidepath doctor` | interpreter, database, settings wiring, mod, last samples, last line and the raw rate limits it came from, rate-limit kinds seen; on Windows, the shell Claude Code runs the status line in and whether the command suits it |
+| `glidepath fetch [--every MIN]` | ask Claude Code's `/usage` for the account's levels now, or from now on every MIN minutes (0: never) |
+| `glidepath menubar [--install|--uninstall]` | the band in the macOS menu bar (SwiftBar) |
+| `glidepath config [show|init|path]` | effective configuration |
 
-`pacer` with no command is `pacer now`.
+`glidepath` with no command is `glidepath now`.
 
 ## Configuration
 
-`~/.pacer/config.json` (written with defaults by the first install, and
+`~/.glidepath/config.json` (written with defaults by the first install, and
 kept as it is after that: a key you leave out takes the default of the version
 you run, one in the file keeps its value, so delete a key to get a newer
 default):
@@ -44,25 +44,25 @@ default):
 | `display.max_width` | 80 | the line drops optional parts to fit, then is cut with `…` (`...` in ascii mode); each part keeps its color |
 | `mod.surfaces` | `["desktop"]` | where the mod draws its band (add `terminal` if you do not use the status line) |
 | `mod.refresh_s` | 60 | how often the mod refreshes the band when no reading moved (15 to 3600) |
-| `compose.timeout_ms` | 1500 (3000 on Windows) | how long your previous status line may take; once it exits, pacer reads its output for up to 500 ms more, and only a command still running at the timeout is stopped; on Windows, 5000 for a slow PowerShell or Git Bash script |
-| `fetch_usage_min` | 0 | every this many minutes the menu bar or a Desktop band runs `claude -p "/usage"` for the account's levels; 0 never (`pacer fetch --every N`) |
+| `compose.timeout_ms` | 1500 (3000 on Windows) | how long your previous status line may take; once it exits, glidepath reads its output for up to 500 ms more, and only a command still running at the timeout is stopped; on Windows, 5000 for a slow PowerShell or Git Bash script |
+| `fetch_usage_min` | 0 | every this many minutes the menu bar or a Desktop band runs `claude -p "/usage"` for the account's levels; 0 never (`glidepath fetch --every N`) |
 | `menubar.notify`, `menubar.style`, `menubar.charts` | true, `bars`, true | macOS notifications; `text` for the plain text menu; a chart under each bar |
 | `retention_days` | 365 | history kept |
 
-`PACER_HOME` moves everything (default `~/.pacer`). The Desktop app
+`GLIDEPATH_HOME` moves everything (default `~/.glidepath`). The Desktop app
 does not inherit your shell's environment, so if you move it, set it in
 `~/.claude/settings.json` under `env` too. Claude Code passes that value as
-written, so pacer expands a leading `~` itself and takes a relative path from
+written, so glidepath expands a leading `~` itself and takes a relative path from
 your home directory, never from the session's folder. The mod does not expand
 `~otheruser/...`: use an absolute path for that. On Windows the home directory
 is `%USERPROFILE%`, and some forms are refused: see Windows notes. Values of
 the wrong type or out of range fall back to the default or are clamped; a
-`config.json` that is not valid JSON is ignored as a whole (`pacer config
+`config.json` that is not valid JSON is ignored as a whole (`glidepath config
 show` says so).
 
 ## Data and privacy
 
-- `~/.pacer/tempo.db` (SQLite, WAL): `samples` (time, window, used %,
+- `~/.glidepath/tempo.db` (SQLite, WAL): `samples` (time, window, used %,
   resets_at, source, session id), `windows` (one row per window: start, reset,
   peak, % unused at close), the profile, counters. Kept 365 days.
 - The status-line payload carries no message content; only the rate limits and
@@ -72,7 +72,7 @@ show` says so).
   is never stored, printed or logged (a test checks the database for a planted
   secret).
 - No hooks inject anything into Claude's context.
-- Errors from the status line go to `~/.pacer/errors.log` (64 KB, one
+- Errors from the status line go to `~/.glidepath/errors.log` (64 KB, one
   rotation), never to the line.
 
 ## Performance
@@ -89,17 +89,18 @@ start, the imports, and each phase of a render.
 ## Layout
 
 ```
-bin/pacer                  launcher (python -I -S safe); bin/ctempo runs it for
-                           installs from before the rename
-pacer/                     the core: store, ingest, pace, weekly, profile, band
+bin/glidepath              launcher (python -I -S safe); bin/pacer and
+                           bin/ctempo run it for installs made under the
+                           earlier names
+glidepath/                 the core: store, ingest, pace, weekly, profile, band
                            (what the band and the line say), chart (the
                            charts' data), menubar, menuart and png (the
                            menu bar's pictures), render, statusline, commands,
-                           install, legacy (the move from ctempo), usagecmd
-                           (/usage), transcripts, clock (local time), winshell
-                           (Windows shells and commands)
-mods/pacer/                the Desktop mod (TypeScript, thin)
-.claude-plugin/            local marketplace: pacer
+                           install, legacy (the move from pacer and ctempo),
+                           usagecmd (/usage), transcripts, clock (local time),
+                           winshell (Windows shells and commands)
+mods/glidepath/            the Desktop mod (TypeScript, thin)
+.claude-plugin/            local marketplace: glidepath
 tests/                     unittest suite
 scripts/bench_statusline.py
 scripts/ci_integration.py  end to end through each shell (CI on Windows, macOS)

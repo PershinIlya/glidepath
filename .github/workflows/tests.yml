@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       # The DST tests read IANA zones with zoneinfo, and Windows has no zone
-      # database of its own: the tzdata package, for the tests only (pacer
+      # database of its own: the tzdata package, for the tests only (glidepath
       # stays stdlib only). Python 3.8 has no zoneinfo, so they skip there.
       - name: Install a zone database for the tests (Windows)
         if: runner.os == 'Windows'
@@ -54,11 +54,11 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
       - name: Validate the mod
-        run: claude plugin validate mods/pacer
+        run: claude plugin validate mods/glidepath
       - name: Test the mod
-        run: claude plugin test mods/pacer
+        run: claude plugin test mods/glidepath
 
-  # scripts/ci_integration.py, in throwaway folders: pacer install, the
+  # scripts/ci_integration.py, in throwaway folders: glidepath install, the
   # statusLine command piped a payload through each shell Claude Code may run
   # it with (Git Bash, pwsh and powershell.exe on Windows; /bin/sh on macOS),
   # uninstall back to the same bytes; and which forms of the repo path

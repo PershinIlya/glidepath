@@ -15,12 +15,12 @@ import time
 import unittest
 from unittest import mock
 
-from pacer import config, render, statusline, winshell
+from glidepath import config, render, statusline, winshell
 
 from .helpers import MON, H, D, TZ_UTC, TempHome, payload, utc
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENTRY = os.path.join(ROOT, "bin", "pacer")
+ENTRY = os.path.join(ROOT, "bin", "glidepath")
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 BAR = re.compile(r"\b(5h|Week|Wk) [━╍─┈#=.-]+ ")
 
@@ -53,7 +53,7 @@ def sh_path(path):
 
 def run(payload, home, args=(), env=None, raw=None):
     e = dict(os.environ)
-    e.update({"PACER_HOME": home, "TZ": TZ_UTC, "CLAUDE_CONFIG_DIR": os.path.join(home, "claude")})
+    e.update({"GLIDEPATH_HOME": home, "TZ": TZ_UTC, "CLAUDE_CONFIG_DIR": os.path.join(home, "claude")})
     e.pop("NO_COLOR", None)
     e.update(env or {})
     data = raw if raw is not None else json.dumps(payload).encode()
@@ -66,7 +66,7 @@ def run(payload, home, args=(), env=None, raw=None):
 class Statusline(unittest.TestCase):
     def setUp(self):
         utc()
-        self.home = tempfile.mkdtemp(prefix="pacer-sl-")
+        self.home = tempfile.mkdtemp(prefix="glidepath-sl-")
         self.now = time.time()
         self.p = {
             "session_id": "abc",
@@ -127,9 +127,9 @@ class Statusline(unittest.TestCase):
             self.assertLessEqual(len(line), 24)
 
     def test_waiting_line_follows_the_display_settings(self):
-        # Review 4: "pacer: waiting for usage data" (29 columns) ignored max_width.
+        # Review 4: "glidepath: waiting for usage data" (33 columns) ignored max_width.
         no_limits = {"session_id": "abc"}
-        for symbols, want in (("unicode", "pacer: waiting for usag…"), ("ascii", "pacer: waiting for us...")):
+        for symbols, want in (("unicode", "glidepath: waiting for …"), ("ascii", "glidepath: waiting fo...")):
             with open(os.path.join(self.home, "config.json"), "w", encoding="utf-8", newline="") as f:
                 json.dump({"display": {"symbols": symbols, "max_width": 24}}, f)
             p, _ = run(no_limits, self.home, env={"NO_COLOR": "1"})
@@ -150,7 +150,7 @@ class Statusline(unittest.TestCase):
         self.assertTrue(text(p.stdout.decode()).startswith("5h 42%"), p.stdout)
 
     def test_non_utf8_stdout_encoding_still_prints(self):
-        e = dict(os.environ, PACER_HOME=self.home, TZ=TZ_UTC, PYTHONIOENCODING="latin-1")
+        e = dict(os.environ, GLIDEPATH_HOME=self.home, TZ=TZ_UTC, PYTHONIOENCODING="latin-1")
         e.pop("NO_COLOR", None)
         p = subprocess.run([sys.executable, "-S", ENTRY, "statusline"], input=json.dumps(self.p).encode(),
                            capture_output=True, env=e, timeout=30)
@@ -218,14 +218,14 @@ class Statusline(unittest.TestCase):
         from contextlib import redirect_stdout
         from unittest import mock
 
-        from pacer import statusline
+        from glidepath import statusline
 
         class Out:
             def __init__(self):
                 self.buffer = io.BytesIO()
 
         o = Out()
-        with mock.patch.dict(os.environ, {"PACER_HOME": self.home}), mock.patch.object(render, "plain", side_effect=RuntimeError("x")), \
+        with mock.patch.dict(os.environ, {"GLIDEPATH_HOME": self.home}), mock.patch.object(render, "plain", side_effect=RuntimeError("x")), \
                 mock.patch.object(sys, "stdout", o), mock.patch.object(sys, "stdin", io.TextIOWrapper(io.BytesIO(json.dumps(self.p).encode()))):
             statusline.main(["--format", "json"])
         d = json.loads(o.buffer.getvalue())
@@ -358,7 +358,7 @@ class Statusline(unittest.TestCase):
         cmd = "%s -I -S %s statusline --compose 'printf x'" % (sh_path(sys.executable), sh_path(ENTRY))
         p, el = run(self.p, self.home, args=["--compose", cmd], env={"COLUMNS": "300"})
         out = text(p.stdout.decode())
-        self.assertEqual(out.count("5h 42%"), 2)  # inner pacer does not compose again
+        self.assertEqual(out.count("5h 42%"), 2)  # inner glidepath does not compose again
         self.assertNotIn("x", out.split("5h")[0])
 
 
@@ -366,13 +366,13 @@ class StaleReadingAfterReset(unittest.TestCase):
     """An idle session's pre-reset reading must not win on display."""
 
     def test_shows_the_judged_level(self):
-        from pacer import ingest, statusline
-        from pacer.store import Store
+        from glidepath import ingest, statusline
+        from glidepath.store import Store
 
         utc()
-        home = tempfile.mkdtemp(prefix="pacer-stale-")
-        old = os.environ.get("PACER_HOME")
-        os.environ["PACER_HOME"] = home
+        home = tempfile.mkdtemp(prefix="glidepath-stale-")
+        old = os.environ.get("GLIDEPATH_HOME")
+        os.environ["GLIDEPATH_HOME"] = home
         try:
             cfg = config.load()
             st = Store()
@@ -389,9 +389,9 @@ class StaleReadingAfterReset(unittest.TestCase):
             self.assertNotEqual(v5["verdict"], "maxed")
         finally:
             if old is None:
-                os.environ.pop("PACER_HOME", None)
+                os.environ.pop("GLIDEPATH_HOME", None)
             else:
-                os.environ["PACER_HOME"] = old
+                os.environ["GLIDEPATH_HOME"] = old
             shutil.rmtree(home, ignore_errors=True)
 
 
@@ -489,7 +489,7 @@ class Render(unittest.TestCase):
 
     def test_bare_line_uses_the_symbols_and_fits(self):
         # Review 4: 13 + 3 + 17 = 33 columns; 32 keeps 29, then "...".
-        from pacer import statusline
+        from glidepath import statusline
 
         cfg = config.load(os.devnull)
         cfg["display"].update(symbols="ascii", max_width=32)
@@ -562,7 +562,7 @@ class WobbledReset(TempHome):
         # Review 8 (long-horizon#4): a window keeps the resets_at of its first
         # reading (D-08). When that one wobbled 2 s early, the line showed
         # @04:59 and @Sun 23:59 for the whole window.
-        from pacer import commands
+        from glidepath import commands
 
         r5, r7 = int(MON + 5 * H), int(MON + 7 * D)
         self.feed(MON + H, five=(10, r5 - 2), week=(20, r7 - 2))
@@ -577,11 +577,11 @@ class WobbledReset(TempHome):
 
 class TildeHome(unittest.TestCase):
     """Review 4 (runtime-ui#0): Claude Code copies settings.json `env` values
-    as written, so PACER_HOME can arrive as "~/..." or as a relative path. It
+    as written, so GLIDEPATH_HOME can arrive as "~/..." or as a relative path. It
     must resolve under the user's home, never under each session's cwd."""
 
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="pacer-tilde-")
+        self.dir = tempfile.mkdtemp(prefix="glidepath-tilde-")
         self.user = os.path.join(self.dir, "home")
         self.cwd = os.path.join(self.dir, "project")
         os.makedirs(self.user)
@@ -593,14 +593,14 @@ class TildeHome(unittest.TestCase):
     def test_home_expands_tilde_and_takes_relative_paths_from_home(self):
         # USERPROFILE too: Python reads `~` from it on Windows, never HOME.
         elsewhere = os.path.join(self.dir, "elsewhere")
-        # Windows refuses /srv/pacer (tests/test_config.py, NoDriveHome); \srv\pacer takes the home's drive.
+        # Windows refuses /srv/glidepath (tests/test_config.py, NoDriveHome); \srv\glidepath takes the home's drive.
         drive = ntpath.splitdrive(self.user)[0]
-        rooted = ("\\srv\\pacer", drive + "\\srv\\pacer") if WINDOWS else ("/srv/pacer", "/srv/pacer")
-        cases = (("~/.pacer-moved", os.path.join(self.user, ".pacer-moved")), ("~", self.user),
-                 ("data/pacer", os.path.join(self.user, "data", "pacer")), (elsewhere, elsewhere),
-                 rooted, ("", os.path.join(self.user, ".pacer")))
+        rooted = ("\\srv\\glidepath", drive + "\\srv\\glidepath") if WINDOWS else ("/srv/glidepath", "/srv/glidepath")
+        cases = (("~/.glidepath-moved", os.path.join(self.user, ".glidepath-moved")), ("~", self.user),
+                 ("data/glidepath", os.path.join(self.user, "data", "glidepath")), (elsewhere, elsewhere),
+                 rooted, ("", os.path.join(self.user, ".glidepath")))
         for value, want in cases:
-            with mock.patch.dict(os.environ, {"HOME": self.user, "USERPROFILE": self.user, "PACER_HOME": value}):
+            with mock.patch.dict(os.environ, {"HOME": self.user, "USERPROFILE": self.user, "GLIDEPATH_HOME": value}):
                 self.assertEqual(config.home(), want, value)
 
     def test_windows_rules(self):
@@ -609,43 +609,43 @@ class TildeHome(unittest.TestCase):
         # (with a slash it is refused: tests/test_config.py, NoDriveHome), Git
         # Bash's /c/Users/x is C:/Users/x, and `~` is USERPROFILE (HOME is ignored).
         user = "C:\\Users\\me"
-        cases = ((None, user + "\\.pacer"), ("", user + "\\.pacer"), ("~", user),
-                 ("~/tempo", user + "\\tempo"), ("~\\tempo\\", user + "\\tempo"), ("data/pacer", user + "\\data\\pacer"),
+        cases = ((None, user + "\\.glidepath"), ("", user + "\\.glidepath"), ("~", user),
+                 ("~/tempo", user + "\\tempo"), ("~\\tempo\\", user + "\\tempo"), ("data/glidepath", user + "\\data\\glidepath"),
                  ("D:\\tempo", "D:\\tempo"), ("d:/tempo/", "d:\\tempo"),
-                 ("\\srv\\pacer", "C:\\srv\\pacer"), ("/d/tempo", "D:\\tempo"), ("/c", "C:\\"), ("/e/", "E:\\"),
+                 ("\\srv\\glidepath", "C:\\srv\\glidepath"), ("/d/tempo", "D:\\tempo"), ("/c", "C:\\"), ("/e/", "E:\\"),
                  ("//server/share/tempo", "\\\\server\\share\\tempo"),
                  ("\\\\server\\share\\tempo", "\\\\server\\share\\tempo"), ("C:/Users/me/../tempo", "C:\\Users\\tempo"))
         with mock.patch.object(config, "IS_WINDOWS", True):
             for value, want in cases:
-                env = {"USERPROFILE": user, "HOME": "/c/Users/other", "PACER_HOME": value or ""}
+                env = {"USERPROFILE": user, "HOME": "/c/Users/other", "GLIDEPATH_HOME": value or ""}
                 with mock.patch.dict(os.environ, env):
                     if value is None:
-                        del os.environ["PACER_HOME"]
+                        del os.environ["GLIDEPATH_HOME"]
                     self.assertEqual(config.home(), want, value)
-            with mock.patch.dict(os.environ, {"HOMEDRIVE": "D:", "HOMEPATH": "\\Users\\me", "PACER_HOME": ""}):
+            with mock.patch.dict(os.environ, {"HOMEDRIVE": "D:", "HOMEPATH": "\\Users\\me", "GLIDEPATH_HOME": ""}):
                 os.environ.pop("USERPROFILE", None)
-                self.assertEqual(config.home(), "D:\\Users\\me\\.pacer")
+                self.assertEqual(config.home(), "D:\\Users\\me\\.glidepath")
 
     def test_statusline_with_tilde_home_writes_under_home_not_cwd(self):
         now = time.time()
         payload = {"session_id": "s", "rate_limits": {"five_hour": {"used_percentage": 10, "resets_at": int(now + 2 * H)}}}
-        env = dict(os.environ, HOME=self.user, USERPROFILE=self.user, PACER_HOME="~/.pacer-moved", TZ=TZ_UTC,
+        env = dict(os.environ, HOME=self.user, USERPROFILE=self.user, GLIDEPATH_HOME="~/.glidepath-moved", TZ=TZ_UTC,
                    CLAUDE_CONFIG_DIR=os.path.join(self.dir, "claude"))
         p = subprocess.run([sys.executable, "-I", "-S", ENTRY, "statusline"], input=json.dumps(payload).encode(),
                            capture_output=True, env=env, cwd=self.cwd, timeout=30)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertTrue(os.path.exists(os.path.join(self.user, ".pacer-moved", "tempo.db")))
+        self.assertTrue(os.path.exists(os.path.join(self.user, ".glidepath-moved", "tempo.db")))
         self.assertEqual(os.listdir(self.cwd), [])  # no directory literally named "~" in the project
 
 
 class EncodedCompose(unittest.TestCase):
     """Review 15 (shells#1, shells#2): on Windows install writes a composed
     command that Windows PowerShell 5.1 or Git Bash would hand to Python changed
-    as `--compose-b64 b<token>`. pacer statusline decodes it on any OS; a
+    as `--compose-b64 b<token>`. glidepath statusline decodes it on any OS; a
     malformed token composes nothing, and never raises."""
 
     def test_parse_args_decodes_it(self):
-        from pacer import statusline
+        from glidepath import statusline
 
         for cmd in ('powershell -NoProfile -File "C:/Users/John Smith/sl.ps1"', "/bin/bash ~/x.sh", "dir C:\\",
                     "echo \u25b2 J\u00fcrgen"):
@@ -659,7 +659,7 @@ class EncodedCompose(unittest.TestCase):
 
     @posix_shell
     def test_the_decoded_command_runs(self):
-        home = tempfile.mkdtemp(prefix="pacer-b64-")
+        home = tempfile.mkdtemp(prefix="glidepath-b64-")
         self.addCleanup(shutil.rmtree, home, True)
         now = time.time()
         p = payload((42, int(now + 2 * H)), (31.5, int(now + 3 * D)))
@@ -678,9 +678,9 @@ class LogRotation(unittest.TestCase):
     with it."""
 
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="pacer-log-")
+        self.dir = tempfile.mkdtemp(prefix="glidepath-log-")
         self.addCleanup(shutil.rmtree, self.dir, True)
-        env = mock.patch.dict(os.environ, {"PACER_HOME": self.dir})
+        env = mock.patch.dict(os.environ, {"GLIDEPATH_HOME": self.dir})
         env.start()
         self.addCleanup(env.stop)
 
@@ -689,7 +689,7 @@ class LogRotation(unittest.TestCase):
             return f.read()
 
     def test_a_rotation_that_fails_still_logs_the_error(self):
-        from pacer import statusline
+        from glidepath import statusline
 
         path = config.log_path()
         with open(path, "w", encoding="utf-8") as f:
@@ -715,7 +715,7 @@ class ComposeWidth(unittest.TestCase):
     ours = "5h 41% ~×2.2▲ →68% @02:19 · wk 52% -18 ×2.2▲ →74% @Sat 02:19"
 
     def lines(self, theirs, columns=100):
-        from pacer import statusline
+        from glidepath import statusline
 
         return statusline.join_composed(theirs, self.ours, config.DEFAULTS, columns).split("\n")
 
@@ -726,7 +726,7 @@ class ComposeWidth(unittest.TestCase):
         self.assertEqual(self.lines("\x1b[2m" + "x" * n + "\x1b[0m")[0][-len(self.ours):], self.ours)
 
     def test_wide_characters_count_twice(self):
-        from pacer import statusline
+        from glidepath import statusline
 
         theirs = "\U0001f4c1 tempo \U0001f33f main \U0001f916 Opus \U0001f4b0 $1.2 41%"
         self.assertEqual(statusline.visible_len(theirs), len(theirs) + 4)
@@ -745,7 +745,7 @@ class WindowsComposer(unittest.TestCase):
     with bash standing in for Git Bash, and p.kill() for taskkill."""
 
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="pacer-wincomp-")
+        self.dir = tempfile.mkdtemp(prefix="glidepath-wincomp-")
         self.addCleanup(shutil.rmtree, self.dir, True)
         patches = [mock.patch.object(config, "IS_WINDOWS", True),
                    mock.patch.object(winshell, "kill_tree", wraps=winshell.kill_tree),
@@ -758,7 +758,7 @@ class WindowsComposer(unittest.TestCase):
         self.kill = started[1]
 
     def compose(self, cmd, raw=b"", timeout=1.5):
-        from pacer import statusline
+        from glidepath import statusline
 
         t = time.time()
         c = statusline.Composer(cmd, raw, t + timeout)
@@ -798,9 +798,9 @@ class WindowsComposer(unittest.TestCase):
         self.assertLess(el, QUICK_LIMIT)
         self.kill.assert_not_called()
 
-    def test_runs_in_the_shell_that_started_pacer(self):
+    def test_runs_in_the_shell_that_started_glidepath(self):
         # Review 15 (shells#0): inside Git Bash, whose PATH puts its own git first, Claude
-        # Code's search can end in PowerShell; the shell that ran pacer is the one to use.
+        # Code's search can end in PowerShell; the shell that ran glidepath is the one to use.
         bash = winshell.predict_shell()[1]  # Git Bash on Windows (never WSL's bash on PATH), else bash
         with mock.patch.object(winshell, "parent_shell", return_value=("bash", bash)), \
                 mock.patch.object(winshell, "predict_shell", return_value=("powershell", None)):
@@ -809,7 +809,7 @@ class WindowsComposer(unittest.TestCase):
         self.assertEqual(c.p.args, [bash, "-c", "printf x"])
 
     def test_main_joins_a_crlf_line(self):
-        from pacer import statusline
+        from glidepath import statusline
 
         class Out:
             def __init__(self):
@@ -820,7 +820,7 @@ class WindowsComposer(unittest.TestCase):
         with mock.patch.object(config, "home", return_value=self.dir), mock.patch.object(sys, "stdout", o), \
                 mock.patch.object(sys, "stdin", io.TextIOWrapper(io.BytesIO(json.dumps(p).encode()))), \
                 mock.patch.dict(os.environ, {"COLUMNS": "200", "NO_COLOR": "1"}):
-            os.environ.pop("PACER_COMPOSED", None)
+            os.environ.pop("GLIDEPATH_COMPOSED", None)
             statusline.main(["--compose", "printf 'theirs\\r\\n'"])
         out = o.buffer.getvalue().decode("utf-8")
         self.assertTrue(text(out).startswith("theirs  5h 42%"), out)
@@ -833,7 +833,7 @@ class PowerShellComposer(unittest.TestCase):
     (-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command), and the
     Composer runs the old command there too. On a real Windows, with pwsh and
     with Windows PowerShell 5.1: output, the payload on stdin reaching a native
-    program (as it must reach pacer's own command), UTF-8 output relayed
+    program (as it must reach glidepath's own command), UTF-8 output relayed
     intact, and a command still running at the deadline killed."""
 
     def setUp(self):
@@ -850,7 +850,7 @@ class PowerShellComposer(unittest.TestCase):
         self.py = "& '%s'" % sys.executable.replace("'", "''")
 
     def compose(self, ps, cmd, raw=b"", timeout=15.0):
-        from pacer import statusline
+        from glidepath import statusline
 
         with mock.patch.object(winshell, "predict_shell", return_value=("powershell", ps)):
             c = statusline.Composer(cmd, raw, time.time() + timeout)

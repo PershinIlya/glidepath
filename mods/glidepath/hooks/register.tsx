@@ -1,4 +1,4 @@
-// pacer band: one quiet row above the prompt, for the Desktop Code tab where
+// glidepath band: one quiet row above the prompt, for the Desktop Code tab where
 // no statusLine renders. Each window is a dim name, a small bar (used, then a
 // forecast to the reset), the percent and, only when there is something to
 // say, a few words; a reset when the band is wide. Details (d) adds a
@@ -14,13 +14,13 @@ import type { EngineInterface, Register, SessionRateLimit, Timer } from 'claude-
 
 import type { Chart, Detail, Phrase, View, Win } from '../types'
 
-const view = atom({ plugin: 'pacer', key: 'view' } as const, null)
-const details = atom({ plugin: 'pacer', key: 'details' } as const, false)
+const view = atom({ plugin: 'glidepath', key: 'view' } as const, null)
+const details = atom({ plugin: 'glidepath', key: 'details' } as const, false)
 
 const RUN_TIMEOUT_MS = 10_000
 const REFRESH_MS = 60_000
 // How often the mod looks for a new reading: this session's own, or another
-// chat's (the CLI touches PACER_HOME/changed). Both are cheap; Python runs
+// chat's (the CLI touches GLIDEPATH_HOME/changed). Both are cheap; Python runs
 // only when one moved.
 const POLL_MS = 5_000
 // The interpreter flags of a runtime.json written before it listed them.
@@ -83,7 +83,7 @@ let queued: readonly SessionRateLimit[] | null | undefined
 let seenLimits: string | null = null
 let seenStamp: number | null = null
 
-// A short log for `pacer doctor` (PACER_HOME/mod.log): which surfaces the
+// A short log for `glidepath doctor` (GLIDEPATH_HOME/mod.log): which surfaces the
 // session draws on, and whether one asked for the band. Written on those
 // events only, never on a timer; the last 40 lines.
 let logged: string[] = []
@@ -145,7 +145,7 @@ export function fromGitBash(path: string): string {
   return drive ? `${drive.toUpperCase()}:/${path.slice(3)}` : path
 }
 
-// The same rules as the CLI: an empty PACER_HOME counts as unset, a leading
+// The same rules as the CLI: an empty GLIDEPATH_HOME counts as unset, a leading
 // `~` is the user's home, and a relative path is taken from it, never from the
 // session's cwd (Claude Code copies settings.json env values as written). On
 // Windows `~\` works like `~/`, Git Bash's `/c/Users/x` is `C:/Users/x`,
@@ -163,11 +163,11 @@ export function resolveHome(value: string | undefined, user: UserHome): string {
   const given = windows && value ? fromGitBash(value) : value
   if (given && (windows ? /^(?:[A-Za-z]:[\\/]|[\\/]{2})/ : /^\//).test(given)) return given
   if (windows && given && /^[A-Za-z]:/.test(given)) {
-    throw new Error(`PACER_HOME ${given} is relative to a drive's current folder; use an absolute path`)
+    throw new Error(`GLIDEPATH_HOME ${given} is relative to a drive's current folder; use an absolute path`)
   }
   if (windows && given?.startsWith('/')) {
     throw new Error(
-      `PACER_HOME ${given} has no drive; Git Bash rewrites such a path to a folder under its own install. ` +
+      `GLIDEPATH_HOME ${given} has no drive; Git Bash rewrites such a path to a folder under its own install. ` +
         `Write it with a drive, e.g. ${driveOf(home) || 'C:'}${given}, or as ~/...`,
     )
   }
@@ -175,13 +175,13 @@ export function resolveHome(value: string | undefined, user: UserHome): string {
   const tilde = windows ? /^~(?:[\\/]|$)/ : /^~(?:\/|$)/
   if (given?.startsWith('~') && !tilde.test(given)) {
     const forms = windows ? '~, ~/ and ~\\' : '~ and ~/'
-    throw new Error(`PACER_HOME ${given}: only ${forms} are expanded; use an absolute path`)
+    throw new Error(`GLIDEPATH_HOME ${given}: only ${forms} are expanded; use an absolute path`)
   }
   if (!home) {
     const name = windows ? 'USERPROFILE' : 'HOME'
-    throw new Error(`${name} is unset: set PACER_HOME to an absolute path, or run \`pacer install --apply\``)
+    throw new Error(`${name} is unset: set GLIDEPATH_HOME to an absolute path, or run \`glidepath install --apply\``)
   }
-  if (!given) return join(home, '.pacer', windows)
+  if (!given) return join(home, '.glidepath', windows)
   const rest = given.replace(windows ? /^~[\\/]?/ : /^~\/?/, '')
   return rest ? join(home, rest, windows) : home
 }
@@ -189,23 +189,23 @@ export function resolveHome(value: string | undefined, user: UserHome): string {
 async function loadRuntime($: EngineInterface): Promise<Runtime> {
   if (runtime !== null) return runtime
   const user = await userHome($)
-  const home = resolveHome(await $.env.get('PACER_HOME'), user)
+  const home = resolveHome(await $.env.get('GLIDEPATH_HOME'), user)
   let text: string
   try {
     text = await $.fs.read(join(home, 'runtime.json', user.windows))
   } catch (error) {
     if (!isNetwork(home, user.windows)) throw error
     const why = error instanceof Error ? error.message : String(error)
-    throw new Error(`cannot read runtime.json from network path ${home}: set PACER_HOME to a local folder (${why})`)
+    throw new Error(`cannot read runtime.json from network path ${home}: set GLIDEPATH_HOME to a local folder (${why})`)
   }
   // A byte order mark (a Windows editor's) would make JSON.parse throw.
   const parsed = JSON.parse(text.replace(/^﻿/, '')) as { python?: unknown; args?: unknown; entry?: unknown }
   if (typeof parsed.python !== 'string' || typeof parsed.entry !== 'string') {
-    throw new Error('runtime.json has no python/entry; run `pacer install --apply`')
+    throw new Error('runtime.json has no python/entry; run `glidepath install --apply`')
   }
   const args = parsed.args === undefined ? DEFAULT_ARGS : parsed.args
   if (!Array.isArray(args) || !args.every((arg) => typeof arg === 'string')) {
-    throw new Error('runtime.json args is not a list of strings; run `pacer install --apply`')
+    throw new Error('runtime.json args is not a list of strings; run `glidepath install --apply`')
   }
   runtime = { python: parsed.python, args, entry: parsed.entry, home, windows: user.windows }
   return runtime
@@ -310,7 +310,7 @@ async function runOnce($: EngineInterface, limits: readonly SessionRateLimit[] |
   seenStamp = before.mtime
   const result = await $.process.run(
     [rt.python, ...rt.args, rt.entry, 'statusline', '--source', 'mod', '--format', 'json'],
-    { stdin: JSON.stringify(payload), timeoutMs: RUN_TIMEOUT_MS, env: { PACER_HOME: rt.home } },
+    { stdin: JSON.stringify(payload), timeoutMs: RUN_TIMEOUT_MS, env: { GLIDEPATH_HOME: rt.home } },
   )
   if (result.exitCode !== 0 || result.stdout.trim() === '') {
     // On Windows a missing interpreter does not fail to start: the spawn falls
@@ -320,16 +320,16 @@ async function runOnce($: EngineInterface, limits: readonly SessionRateLimit[] |
     // misreported while it works.
     if (result.exitCode !== 0 && !(await $.fs.exists(rt.python).catch(() => true))) {
       runtime = null // read runtime.json again on the next refresh, after a reinstall
-      throw new Error(`Python not found at ${rt.python}: run \`pacer install --apply\``)
+      throw new Error(`Python not found at ${rt.python}: run \`glidepath install --apply\``)
     }
     const lines = result.stderr.trim().split(/\r?\n/)
     // cmd.exe's own message spans 2 lines.
     const why = result.exitCode === 9009 ? lines.join(' ') : lines.pop()
-    throw new Error(why || `pacer exited ${result.exitCode}`)
+    throw new Error(why || `glidepath exited ${result.exitCode}`)
   }
   const parsed = JSON.parse(result.stdout) as Partial<View>
   if (!Array.isArray(parsed.segments)) {
-    throw new Error(typeof parsed.line === 'string' ? parsed.line : 'unexpected output from pacer')
+    throw new Error(typeof parsed.line === 'string' ? parsed.line : 'unexpected output from glidepath')
   }
   // This run's own touch of the stamp is no news; another chat's since is.
   const after = await stamp($, rt)
@@ -667,7 +667,7 @@ export const register: Register = (on) => {
     if (current.error) {
       ours = (
         <Text dimColor wrap="truncate-end">
-          pacer: {current.error}
+          glidepath: {current.error}
         </Text>
       )
     } else if (wins && e.surface === 'desktop') {

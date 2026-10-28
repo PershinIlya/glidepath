@@ -1,4 +1,4 @@
-"""The menu bar indicator (pacer/menubar.py)."""
+"""The menu bar indicator (glidepath/menubar.py)."""
 
 import contextlib
 import io
@@ -7,7 +7,7 @@ import subprocess
 import sys
 from unittest import mock
 
-from pacer import band, config, install, menubar
+from glidepath import band, config, install, menubar
 
 from .helpers import MON, H, D, TempHome
 from .test_band import NOW, STATES
@@ -143,7 +143,7 @@ class Plugin(TempHome):
         self.assertIn("# <swiftbar.hideSwiftBar>true</swiftbar.hideSwiftBar>", text)
         self.assertIn("# <swiftbar.hideLastUpdated>true</swiftbar.hideLastUpdated>", text)
         if os.name != "nt":  # SwiftBar is macOS; the script is sh
-            env = {k: v for k, v in os.environ.items() if k != "PACER_HOME"}
+            env = {k: v for k, v in os.environ.items() if k != "GLIDEPATH_HOME"}
             p = subprocess.run(["sh", path], capture_output=True, text=True, env=env, timeout=60)
             self.assertEqual(p.returncode, 0, p.stderr)
             self.assertIn(" | image=", p.stdout.splitlines()[0])
@@ -171,8 +171,8 @@ class Plugin(TempHome):
         self.assertIn("brew install --cask swiftbar", out.getvalue())
 
     def test_the_cli_command(self):
-        p = subprocess.run([sys.executable, "-I", "-S", os.path.join(ROOT, "bin", "pacer"), "menubar"],
-                           capture_output=True, text=True, env=dict(os.environ, PACER_HOME=self.dir), timeout=60)
+        p = subprocess.run([sys.executable, "-I", "-S", os.path.join(ROOT, "bin", "glidepath"), "menubar"],
+                           capture_output=True, text=True, env=dict(os.environ, GLIDEPATH_HOME=self.dir), timeout=60)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("\n---\n", p.stdout)
 
@@ -210,7 +210,7 @@ class Pictures(TempHome):
         import struct
         import zlib
 
-        from pacer import menuart
+        from glidepath import menuart
 
         for state in STATES:
             for w in band.windows(*STATES[state], NOW):
@@ -221,8 +221,8 @@ class Pictures(TempHome):
                 self.assertEqual(len(zlib.decompress(idat)), 28 * (1 + 240 * 4))
 
     def test_the_bar_leaves_room_before_its_label(self):
-        from pacer import menuart
-        from pacer.png import Canvas
+        from glidepath import menuart
+        from glidepath.png import Canvas
 
         w = band.windows(*STATES["unused"], NOW)[0]  # green dots run to the bar's end
         drawn = {}
@@ -234,8 +234,8 @@ class Pictures(TempHome):
         self.assertEqual(max(clear), 0.0)  # the last 10 points are empty
 
     def test_each_kind_draws_its_own_colors(self):
-        from pacer import menuart
-        from pacer.png import Canvas
+        from glidepath import menuart
+        from glidepath.png import Canvas
 
         def colors(state, i):
             w = band.windows(*STATES[state], NOW)[i]

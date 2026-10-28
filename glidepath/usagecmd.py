@@ -3,7 +3,7 @@
 The status line and the mod see the rate limits only when a Claude Code
 session on this machine talks to the API. `claude -p "/usage"` asks for the
 account's current levels whenever it runs, so work in chats, Cowork, cloud
-sessions or on another computer shows too. pacer never sees a credential:
+sessions or on another computer shows too. glidepath never sees a credential:
 Claude Code makes the request. Off by default (fetch_usage_min 0); the menu
 bar runs it at most every that many minutes, and so does a Desktop band, in
 the background (`spawn`). It prints
@@ -77,7 +77,7 @@ def parse(text, now):
 
 # What marks a process as running inside a Claude Code session: a nested
 # `claude` refuses to start, or takes it for its own.
-SESSION_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "PACER_HOME")
+SESSION_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "GLIDEPATH_HOME")
 
 
 def claude_bin():
@@ -110,7 +110,7 @@ def fetch(now=None, run=None):
     if rc == 0 and not readings and COST.search(text or ""):
         # /usage showed the session's spend. Seen on a Windows machine,
         # signed in with Max: claude -p asks for the plan's limits only in a folder
-        # it trusts, and this runs in PACER_HOME. Or an API-key login.
+        # it trusts, and this runs in GLIDEPATH_HOME. Or an API-key login.
         return False, ("claude -p /usage shows spend, not plan limits: Claude Code shows them only in a folder "
                        "it trusts. Run claude once in %s and choose \"Yes, I trust this folder\" (or sign in "
                        "with your Claude subscription: /login)" % config.home())
@@ -153,21 +153,21 @@ def set_every(minutes):
 
 def say_every(minutes, path):
     print("Every %g min the menu bar and the Desktop band ask Claude Code's /usage for your levels (%s)."
-          % (minutes, path) if minutes > 0 else "pacer no longer runs /usage (%s)." % path)
+          % (minutes, path) if minutes > 0 else "glidepath no longer runs /usage (%s)." % path)
 
 
 def main(args):
-    """`pacer fetch [--every MIN]`."""
+    """`glidepath fetch [--every MIN]`."""
     if args.every is not None:
         say_every(args.every, set_every(args.every))
         return 0
     ok, msg = run_now()
-    print(("Recorded " if ok else "pacer fetch: ") + msg)
+    print(("Recorded " if ok else "glidepath fetch: ") + msg)
     return 0 if ok else 1
 
 
 def run_now(now=None):
-    """`pacer fetch`: one fetch, its outcome kept for doctor. Returns (ok, message)."""
+    """`glidepath fetch`: one fetch, its outcome kept for doctor. Returns (ok, message)."""
     from .store import Store
 
     now = time.time() if now is None else now
@@ -184,7 +184,7 @@ def run_now(now=None):
 
 
 def spawn(st, now, cfg, runtime=None, popen=None):
-    """A Desktop band's run: start `pacer fetch` in the background when one is
+    """A Desktop band's run: start `glidepath fetch` in the background when one is
     due, so the band never waits for it; its readings wake the bands when
     they land (the stamp). Returns whether it started one."""
     if not due(st, now, every(cfg)):
@@ -195,7 +195,7 @@ def spawn(st, now, cfg, runtime=None, popen=None):
         runtime = installed()
     python, args, entry = runtime
     kw = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True,
-              cwd=config.home(), env=dict(os.environ, PACER_HOME=config.home()))
+              cwd=config.home(), env=dict(os.environ, GLIDEPATH_HOME=config.home()))
     if config.IS_WINDOWS:
         # No console window; out of the band's process group, and of its job when allowed.
         flags = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP

@@ -67,7 +67,7 @@ def cmd_now(args, cfg):
     now = time.time()
     st = _open()
     if st is None:
-        print("No data yet: %s does not exist. Is the statusLine installed (pacer install)?" % config.db_path())
+        print("No data yet: %s does not exist. Is the statusLine installed (glidepath install)?" % config.db_path())
         return 1
     try:
         v5, vw, prof = views(st, cfg, now)
@@ -296,7 +296,7 @@ def cmd_profile(args, cfg):
             else:
                 # It fades with the half-life from its build (D-14), as the weights use it.
                 hl = float(cfg["profile"]["half_life_days"]) * 86400
-                print("  built %s ago, weight now %.0f%% (it halves every %g days; `pacer bootstrap` builds a fresh one)" % (
+                print("  built %s ago, weight now %.0f%% (it halves every %g days; `glidepath bootstrap` builds a fresh one)" % (
                     dur(now - float(m.get("built_at", now))), 100 * trust * prof.prior_fade(now, hl), hl / 86400))
         else:
             ov = cfg["profile"].get("override")
@@ -307,7 +307,7 @@ def cmd_profile(args, cfg):
                     ",".join(profile.DAYS[d] for d in ov.get("work_days", ()) if 0 <= d < 7),
                     wake[0], wake[1], ov.get("mode", "prior")))
             else:
-                print("Prior: none (run `pacer bootstrap`)")
+                print("Prior: none (run `glidepath bootstrap`)")
         # Mode replace takes the override's shape alone (Profile.rates).
         replaced = (cfg["profile"].get("override") or {}).get("mode") == "replace"
         print("Learned from usage %%: %d hours %s, typical week %s" % (
@@ -361,7 +361,7 @@ def _surplus(st, cfg, w, awake, flat, now):
     if tgt >= 100.0:
         note = "the reset column is what expired"
     else:
-        note = "the reset column is the peak versus your %g%% target; `pacer report` shows what expired" % tgt
+        note = "the reset column is the peak versus your %g%% target; `glidepath report` shows what expired" % tgt
     print("  (negative = surplus building up; %s)" % note)
 
 
@@ -562,7 +562,7 @@ def cmd_bootstrap(args, cfg):
     if args.dry_run:
         print("DRY RUN: profile not saved.")
     else:
-        print("Saved as the profile prior. See it with `pacer profile`.")
+        print("Saved as the profile prior. See it with `glidepath profile`.")
     return 0
 
 
@@ -576,13 +576,13 @@ def cmd_doctor(args, cfg):
     def add(level, what, detail=""):
         results.append((level, what, detail))
 
-    add("ok", "pacer %s" % _version(), "repo %s" % install.repo_root())
+    add("ok", "glidepath %s" % _version(), "repo %s" % install.repo_root())
     home_err = None
     try:
         config.home()
     except config.HomeError as e:  # Windows: no home, so no runtime.json, database or log below
         home_err = str(e)
-        add("fail", "PACER_HOME", home_err)
+        add("fail", "GLIDEPATH_HOME", home_err)
     rt = None
     try:
         with open(config.runtime_path(), encoding="utf-8-sig") as f:
@@ -595,7 +595,7 @@ def cmd_doctor(args, cfg):
             ("Python %s, sqlite %s, %.0f ms startup" % (ver, sq, ms)) if ok else note)
         add("ok" if os.path.exists(rt.get("entry", "")) else "fail", "entry point %s" % rt.get("entry"))
     elif not home_err:
-        add("warn", "no runtime.json", "run `pacer install --apply` (the mod reads it)")
+        add("warn", "no runtime.json", "run `glidepath install --apply` (the mod reads it)")
 
     sp = install.settings_path(args.settings)
     try:
@@ -603,24 +603,24 @@ def cmd_doctor(args, cfg):
         sl = obj.get("statusLine")
         cmd = sl.get("command") if isinstance(sl, dict) else None
         if install.is_ours(cmd):
-            add("ok", "statusLine runs pacer", cmd)
+            add("ok", "statusLine runs glidepath", cmd)
             ri = sl.get("refreshInterval")
             add("ok" if ri else "warn", "refreshInterval %s" % ri, "" if ri else "set it to 60 so idle sessions keep updating")
             comp = install.compose_of(cmd)
             if comp:
                 add("ok", "composing with your previous statusLine", comp)
         elif cmd:
-            add("warn", "statusLine is not pacer", cmd)
+            add("warn", "statusLine is not glidepath", cmd)
         else:
             add("warn", "no statusLine in %s" % sp)
         if config.IS_WINDOWS:
             _doctor_shell(add, sp, obj, cmd)
             _doctor_compose(add, cmd)
-            # Claude Code passes the settings env's PACER_HOME as written, but doctor run
+            # Claude Code passes the settings env's GLIDEPATH_HOME as written, but doctor run
             # from Git Bash sees only the folder MSYS rewrote it to: check the raw one.
             bad = install.home_problem(obj)
             if bad and bad != home_err:
-                add("fail", "PACER_HOME in the settings env", bad)
+                add("fail", "GLIDEPATH_HOME in the settings env", bad)
         if obj.get("disableAllHooks"):
             add("warn", "disableAllHooks is set", "the statusLine and mods do not run")
     except ValueError as e:
@@ -638,7 +638,7 @@ def cmd_doctor(args, cfg):
             add("ok" if p.get("enabled", True) else "warn", "mod %s installed" % p.get("id"),
                 "enabled" if p.get("enabled", True) else "disabled")
         else:
-            add("warn", "mod not installed", "pacer install --apply, or claude plugin install %s" % install.PLUGIN_ID)
+            add("warn", "mod not installed", "glidepath install --apply, or claude plugin install %s" % install.PLUGIN_ID)
     else:
         add("warn", "could not list plugins", (se or "claude not on PATH").strip()[:120])
 
@@ -684,7 +684,7 @@ def cmd_doctor(args, cfg):
             elif overridden:
                 add("ok", "profile prior from profile.override")
             else:
-                add("warn", "no transcript prior", "run `pacer bootstrap`")
+                add("warn", "no transcript prior", "run `glidepath bootstrap`")
             add("ok", "profile hours learned from usage %%: %d" % prof.learned_hours,
                 "unused: profile.override mode replace ignores them"
                 if (cfg["profile"].get("override") or {}).get("mode") == "replace" else "")
@@ -715,7 +715,7 @@ def cmd_doctor(args, cfg):
 
 def _doctor_shell(add, spath, obj, cmd):
     """Windows: the shell Claude Code will run the statusLine in (Git Bash if
-    it finds one, else PowerShell), and whether pacer's command was written
+    it finds one, else PowerShell), and whether glidepath's command was written
     for the other one (Git Bash installed or removed since install)."""
     from . import install, winshell
 
@@ -743,9 +743,9 @@ def _doctor_shell(add, spath, obj, cmd):
     msys = ""
     if winshell.getenv(os.environ, "MSYSTEM"):
         msys = ("; checked from Git Bash, so Claude Code started from the Desktop app or PowerShell may pick "
-                "another shell: run `pacer doctor` from PowerShell to check")
+                "another shell: run `glidepath doctor` from PowerShell to check")
     if need and need != kind:
-        fix = path + msys if msys else "run `pacer install --apply` to rewrite it (%s)" % path
+        fix = path + msys if msys else "run `glidepath install --apply` to rewrite it (%s)" % path
         add("warn", "statusLine command is written for %s, but Claude Code would run it in %s" % (
             winshell.SHELLS[need], name), fix)
     else:
@@ -758,7 +758,7 @@ def _doctor_compose(add, cmd):
     from . import install, winshell
 
     argv = install.split_command(cmd) if install.is_ours(cmd) else None
-    plain = None  # the value pacer statusline composes with, when a plain --compose gave it
+    plain = None  # the value glidepath statusline composes with, when a plain --compose gave it
     if argv and "statusline" in argv:
         it = iter(argv[argv.index("statusline") + 1:])
         for a in it:  # the last flag wins, as in statusline.parse_args
@@ -768,8 +768,8 @@ def _doctor_compose(add, cmd):
             elif a in ("--source", "--format", "--now"):
                 next(it, None)
     if plain is not None and winshell.needs_encoding(plain):
-        add("warn", "your previous statusLine can reach pacer changed in Windows PowerShell 5.1 or Git Bash",
-            "run `pacer install --apply` to store it encoded")
+        add("warn", "your previous statusLine can reach glidepath changed in Windows PowerShell 5.1 or Git Bash",
+            "run `glidepath install --apply` to store it encoded")
 
 
 def _version():

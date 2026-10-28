@@ -11,10 +11,11 @@ node_modules/
 .claude/
 **/.claude-plugin/types/
 
-# pacer data, if PACER_HOME ever points inside the clone
+# glidepath data, if GLIDEPATH_HOME ever points inside the clone
 *.db
 *.db-wal
 *.db-shm
+*.glidepath-backup-*
 *.pacer-backup-*
 
 # Local material kept beside the clone

@@ -392,7 +392,7 @@ def updated(v5, vw):
 def line(v5, vw, cfg, now, width=None):
     """[(text, tone)] of the line in the configured style (display.style)."""
     if not any(v.get("present") or v.get("raw") for v in (v5, vw)):
-        return render.fit([("pacer: waiting for usage data", "dim")], cfg, width)
+        return render.fit([("glidepath: waiting for usage data", "dim")], cfg, width)
     if cfg["display"].get("style") == "classic":
         return render.segments(v5, vw, cfg, width)
     return segments(windows(v5, vw, now), cfg, width)
@@ -437,7 +437,7 @@ def segments(ws, cfg, width=None):
     s = render.symbols(cfg)
     width = int(width or cfg["display"].get("max_width", 80))
     if not any(w["pct"] is not None for w in ws):
-        return render.fit([("pacer: waiting for usage data", "dim")], cfg, width)
+        return render.fit([("glidepath: waiting for usage data", "dim")], cfg, width)
     focus = any(w.get("phrase") and w["phrase"]["attention"] for w in ws)
     # grey: the grey words ("On pace"); green: the green ones of how many windows.
     steps = [
