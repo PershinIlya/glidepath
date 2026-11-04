@@ -79,6 +79,11 @@ def compute(raw, cfg, opts, now, line_of=None):
     sid = sid if isinstance(sid, str) and sid else None
     st = Store(timeout_ms=cfg.get("db_timeout_ms", 250))
     try:
+        if opts["source"] == "mod":
+            try:
+                note_mod_log(payload)
+            except OSError as e:
+                log_error(e, "mod log")
         recorded = False
         if opts["record"] and (readings or rejects or kinds):
             try:
@@ -126,6 +131,30 @@ def compute(raw, cfg, opts, now, line_of=None):
     finally:
         st.close()
     return v5, vw, readings
+
+
+MOD_LOG_LINES = 40
+
+
+def note_mod_log(payload):
+    """Add the band's own log lines (the payload's "mod_log": which surfaces each
+    session draws on, whether one asked for the band) to GLIDEPATH_HOME/mod.log,
+    for `doctor`, keeping the last MOD_LOG_LINES. The mod hands them over
+    rather than write a file itself."""
+    lines = payload.get("mod_log") if isinstance(payload, dict) else None
+    if not isinstance(lines, list):
+        return
+    new = [" ".join(x.split())[:300] for x in lines if isinstance(x, str) and x.strip()]
+    if not new:
+        return
+    path = os.path.join(config.home(), "mod.log")
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            old = [line.rstrip("\n") for line in f if line.strip()]
+    except FileNotFoundError:
+        old = []
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join((old + new)[-MOD_LOG_LINES:]) + "\n")
 
 
 def shown_changed(action):

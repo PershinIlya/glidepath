@@ -1020,16 +1020,35 @@ test('a failing run is not retried by the poll, only by the refresh timer', asyn
   expect(runs.length).toBe(3)
 })
 
-test('logs which surfaces the session draws on and whether one asked for the band', async ($, on) => {
-  const { clock, writes } = stub(on, { surfaces: [], run: () => cli([win({ id: 'h5' }), win({ id: 'wk' })]) })
+test('hands the CLI which surfaces the session draws on and whether one asked for the band', async ($, on) => {
+  const { runs, clock, writes } = stub(on, { surfaces: [], run: () => cli([win({ id: 'h5' }), win({ id: 'wk' })]) })
   await $.session.start(start('desktop'))
   await clock.advance(1)
-  const log = () => writes.filter((w) => w.path.endsWith('/home/u/.glidepath/mod.log')).pop()?.text ?? ''
-  expect(log()).toMatch(/sess-1 start: surfaces \[\]\n$/)
   await $.ui.mount(band('desktop'))
-  expect(log()).toMatch(/band asked on desktop: drawn\n$/)
   await $.ui.mount(band('terminal'))
-  expect(log()).toMatch(/band asked on terminal: not drawn, not in mod.surfaces \[desktop\]\n$/)
+  await clock.advance(60_000)
+  const sent: string[] = runs.flatMap((r) => JSON.parse(r.init?.stdin ?? '{}').mod_log ?? [])
+  expect(sent.length).toBe(3) // each line once
+  expect(sent[0]).toMatch(/sess-1 start: surfaces \[\]$/)
+  expect(sent[1]).toMatch(/band asked on desktop: drawn$/)
+  expect(sent[2]).toMatch(/band asked on terminal: not drawn, not in mod.surfaces \[desktop\]$/)
+  expect(writes).toEqual([]) // the CLI keeps mod.log: the mod writes no file
+})
+
+test('log lines a failed run did not take go with the next one', async ($, on) => {
+  const options: Options = { run: failed(2, 'Traceback: boom\n') }
+  const { runs, clock } = stub(on, options)
+  await $.session.start(start('desktop'))
+  await clock.advance(1)
+  await clock.advance(60_000)
+  const logOf = (i: number): string[] => JSON.parse(runs[i]?.init?.stdin ?? '{}').mod_log ?? []
+  const tried = logOf(runs.length - 1)
+  expect(tried.length).toBe(1)
+  options.run = () => cli([win({ id: 'h5' }), win({ id: 'wk' })])
+  await clock.advance(60_000)
+  expect(logOf(runs.length - 1)).toEqual(tried)
+  await clock.advance(60_000)
+  expect(logOf(runs.length - 1)).toEqual([])
 })
 
 test('a pinned clone that is gone: the CLI beside the module, with the pinned Python', async ($, on) => {

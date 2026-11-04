@@ -258,6 +258,23 @@ class Statusline(unittest.TestCase):
         self.assertFalse(statusline.shown_changed("anomaly"))
         self.assertTrue(statusline.shown_changed("reset_drop"))
 
+    def test_the_mods_log_lines_go_to_mod_log(self):
+        log = os.path.join(self.home, "mod.log")
+        run(self.p, self.home, args=["--source", "mod", "--format", "json"])
+        self.assertFalse(os.path.exists(log))  # nothing to log: no file
+        lines = ["2026-10-14T10:00:%02dZ sess-1 band asked on desktop: drawn" % i for i in range(45)]
+        run(dict(self.p, mod_log=lines[:5] + [7, None, "  ", "a\nb  c"]), self.home, args=["--source", "mod", "--format", "json"])
+        with open(log, encoding="utf-8") as f:
+            self.assertEqual(f.read().splitlines(), lines[:5] + ["a b c"])  # strings only, one line each
+        run(dict(self.p, mod_log=lines[5:]), self.home, args=["--source", "mod", "--format", "json"])
+        with open(log, encoding="utf-8") as f:
+            kept = f.read().splitlines()
+        self.assertEqual(len(kept), statusline.MOD_LOG_LINES)  # the last 40
+        self.assertEqual(kept[-1], lines[-1])
+        run(dict(self.p, mod_log=["x"]), self.home)  # only the band's runs log
+        with open(log, encoding="utf-8") as f:
+            self.assertNotIn("x", f.read().splitlines())
+
     def test_json_format_for_the_mod(self):
         p, _ = run(self.p, self.home, args=["--source", "mod", "--format", "json"])
         d = json.loads(p.stdout)

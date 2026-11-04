@@ -667,9 +667,11 @@ Claude Code 2.1.302): a local session in the Code tab draws (`desktop`), and so
 does the terminal; a cloud session viewed in the same app loads the mod, and
 the mod reads the rate limits, but `$.session.surfaces()` is empty and
 `$.ui.open` answers "no-surface", so nothing it draws (band, status, toast,
-pane) is shown; regular chats run no Claude Code at all. The mod now logs, to
-`GLIDEPATH_HOME/mod.log`, the surfaces each session draws on and whether one asked
-for the band, and `glidepath doctor` prints the end of it. For everything outside
+pane) is shown; regular chats run no Claude Code at all. The mod now logs the
+surfaces each session draws on and whether one asked for the band, handing the
+lines to the CLI's next run, which keeps them in `GLIDEPATH_HOME/mod.log` (the
+plugin directory holds a mod that writes files for a reviewer), and `glidepath
+doctor` prints the end of it. For everything outside
 Claude Code, `glidepath menubar` prints the band as a SwiftBar plugin for the macOS
 menu bar: read only, from the store, refreshed every minute; its readings are
 as old as the last Claude Code session's on that Mac, which the title (grey

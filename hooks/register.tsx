@@ -107,10 +107,11 @@ let queued: readonly SessionRateLimit[] | null | undefined
 let seenLimits: string | null = null
 let seenStamp: number | null = null
 
-// A short log for `glidepath doctor` (GLIDEPATH_HOME/mod.log): which surfaces the
-// session draws on, and whether one asked for the band. Written on those
-// events only, never on a timer; the last 40 lines.
-let logged: string[] = []
+// A short log for `glidepath doctor`: which surfaces the session draws on, and
+// whether one asked for the band, on those events only. Its lines go with the
+// CLI's next run, which keeps the last 40 in GLIDEPATH_HOME/mod.log: the mod
+// writes no file of its own.
+let unsent: string[] = []
 const seenRenders = new Set<string>()
 async function surfacesOf($: EngineInterface): Promise<string> {
   const list = await $.session.surfaces().catch(() => null)
@@ -118,15 +119,9 @@ async function surfacesOf($: EngineInterface): Promise<string> {
 }
 
 async function trace($: EngineInterface, line: string) {
-  try {
-    const rt = await loadRuntime($)
-    const id = (await $.session.id()).slice(0, 8)
-    const at = new Date(await $.clock.now()).toISOString()
-    logged = [...logged.slice(-39), `${at} ${id} ${line}`]
-    await $.fs.write(join(rt.home, 'mod.log', rt.windows), `${logged.join('\n')}\n`)
-  } catch {
-    // no runtime yet: the band says why
-  }
+  const id = (await $.session.id()).slice(0, 8)
+  const at = new Date(await $.clock.now()).toISOString()
+  unsent = [...unsent.slice(-39), `${at} ${id} ${line}`]
 }
 
 // The user's home as Python's os.path.expanduser finds it, and whether
@@ -357,7 +352,8 @@ function windowsOf(x: unknown): Win[] | null {
 async function runOnce($: EngineInterface, limits: readonly SessionRateLimit[] | null) {
   const rt = await loadRuntime($)
   const current = limits ?? (await $.session.usage()).rateLimits
-  const payload = toPayload(await $.session.id(), current)
+  const sending = unsent
+  const payload = { ...toPayload(await $.session.id(), current), ...(sending.length > 0 ? { mod_log: sending } : {}) }
   const before = await stamp($, rt)
   // Seen even when the run fails: the poll must not retry a failing run every
   // 5 s; the refresh timer does, at its own pace.
@@ -367,6 +363,7 @@ async function runOnce($: EngineInterface, limits: readonly SessionRateLimit[] |
     [rt.python, ...rt.args, rt.entry, 'statusline', '--source', 'mod', '--format', 'json'],
     { stdin: JSON.stringify(payload), timeoutMs: RUN_TIMEOUT_MS, env: { GLIDEPATH_HOME: rt.home } },
   )
+  if (result.exitCode === 0) unsent = unsent.filter((line) => !sending.includes(line))
   if (result.exitCode !== 0 || result.stdout.trim() === '') {
     // On Windows a missing interpreter does not fail to start: the spawn falls
     // back to cmd.exe, which says only "...operable program or batch file."

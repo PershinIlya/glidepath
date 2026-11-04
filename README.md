@@ -155,18 +155,18 @@ glidepath's own Python program, `bin/glidepath` in the plugin's folder:
   and once a minute, it runs `<python> bin/glidepath statusline --source mod
   --format json` and draws what that prints.
 - **What it passes on.** Only to that program, on its standard input: the
-  session id and the rate limits Claude Code gives the mod (each limit's
-  percentage used and reset time). The mod sends nothing over the network,
-  and neither does the program.
-- **What it reads.** `~/.glidepath/runtime.json`, and the environment
-  variables `GLIDEPATH_HOME`, `HOME`, `USERPROFILE`, `HOMEDRIVE`, `HOMEPATH`
-  and `OS`, to find that folder.
-- **What it writes.** `~/.glidepath/mod.log`: the last 40 lines of which
-  surfaces each session draws on, for `glidepath doctor`. Nothing runs or
-  obeys that file.
-- **What the program does.** It writes its history, config and logs in
-  `~/.glidepath`. On its first runs it learns your week in the background
-  (`glidepath bootstrap`): from Claude Code's transcripts in
+  session id, the rate limits Claude Code gives the mod (each limit's
+  percentage used and reset time), and its few log lines (which surfaces each
+  session draws on, for `glidepath doctor`). The mod sends nothing over the
+  network, and neither does the program.
+- **What it reads.** `~/.glidepath/runtime.json`, the time stamp
+  `~/.glidepath/changed` (touched when another chat's reading changes the
+  band), and the environment variables `GLIDEPATH_HOME`, `HOME`,
+  `USERPROFILE`, `HOMEDRIVE`, `HOMEPATH` and `OS`, to find that folder.
+- **What it writes.** No file.
+- **What the program does.** It writes its history, config and logs, `mod.log`
+  among them, in `~/.glidepath`. On its first runs it learns your week in the
+  background (`glidepath bootstrap`): from Claude Code's transcripts in
   `~/.claude/projects` it reads only each assistant message's time and token
   counts. Only if you turn it on with `glidepath fetch --every`, it also starts
   Claude Code (`claude`) to read `/usage`, a request Claude Code makes with
