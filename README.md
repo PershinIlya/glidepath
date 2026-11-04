@@ -127,8 +127,8 @@ history stays in `~/.glidepath` (delete it if you want it gone).
 
 ## Privacy and safety
 
-- **glidepath never reads your credentials** (no OAuth token, no Keychain, no
-  `~/.claude/.credentials.json`) and makes no network requests of its own.
+- **glidepath never touches your Claude login**: no token, no Keychain item,
+  no credentials file. It makes no network requests of its own.
   It uses only the `rate_limits` Claude Code gives the status line and the
   mod, and, if you turn it on, what Claude Code's `/usage` prints: Claude
   Code makes that request with its own login.

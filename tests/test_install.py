@@ -2209,7 +2209,7 @@ class WindowsInstall(Sandbox):
         def picky(cmd, env=None, cwd=None):
             calls.append((cmd, cwd))
             if cmd[:3] == ["plugin", "marketplace", "add"] and cmd[3] != "./":
-                return 1, "", "Invalid marketplace source format. Try: owner/repo, https://..., or ./path"
+                return 1, "", "Invalid marketplace source format. Try: owner/repo, a URL, or ./path"
             return cli(cmd)
 
         before = self.write(SETTINGS)
