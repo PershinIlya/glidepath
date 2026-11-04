@@ -1040,7 +1040,11 @@ run when there is none (`transcripts.spawn_bootstrap`, once, and a week on
 while transcripts give none), and with no status line of ours the band draws
 in the terminal too (`mod.surfaces` null, `config.band_surfaces`). The
 status line, the launcher and the menu bar still need the install: they
-must outlive a plugin update, which moves Claude Code's copy.
+must outlive a plugin update, which moves Claude Code's copy. The directory
+also refuses a repository whose `.gitattributes` rewrites file contents, and
+`text` and `eol` do, so there is none: a Windows checkout may give the Python
+files CRLF, which Python reads as it reads LF, and nothing glidepath writes
+runs `bin/glidepath` by its `#!` line.
 
 ## Windows
 
