@@ -252,7 +252,7 @@ async function loadRuntime($: EngineInterface): Promise<Runtime> {
     return runtime
   }
   // A byte order mark (a Windows editor's) would make JSON.parse throw.
-  const parsed = JSON.parse(text.replace(/^﻿/, '')) as { python?: unknown; args?: unknown; entry?: unknown }
+  const parsed = JSON.parse(text.replace(/^\uFEFF/, '')) as { python?: unknown; args?: unknown; entry?: unknown }
   if (typeof parsed.python !== 'string' || typeof parsed.entry !== 'string') {
     throw new Error('runtime.json has no python/entry; run `glidepath install --apply`')
   }
@@ -556,14 +556,14 @@ export function chartSvg(c: Chart, W: number, alt: string, tone?: string): strin
   if (c.out != null) {
     // It runs out before the reset: the rest of the window tinted, a dashed
     // mark down from a dot on the limit, and its time beside it.
-    const h = tone === 'warning' ? 'ry' : 'rx'
+    const red = tone === 'warning' ? 'ry' : 'rx'
     const x = sx(c.out)
-    out.push(`<rect class='oz ${h}' x='${x}' y='${pad.t}' width='${r1(Math.max(0, W - pad.r - x))}' height='${r1(base - pad.t)}'/>`)
-    out.push(`<line class='ol ${h}' x1='${x}' y1='${pad.t}' x2='${x}' y2='${base}'/>`)
-    out.push(`<circle class='${h}' cx='${x}' cy='${pad.t}' r='2.4'/>`)
+    out.push(`<rect class='oz ${red}' x='${x}' y='${pad.t}' width='${r1(Math.max(0, W - pad.r - x))}' height='${r1(base - pad.t)}'/>`)
+    out.push(`<line class='ol ${red}' x1='${x}' y1='${pad.t}' x2='${x}' y2='${base}'/>`)
+    out.push(`<circle class='${red}' cx='${x}' cy='${pad.t}' r='2.4'/>`)
     if (c.out_label) {
       const room = W - pad.r - x > c.out_label.length * LABEL_PX + 6
-      out.push(`<text class='ot ${h}' x='${r1(room ? x + 4 : x - 4)}' y='${pad.t + 10}' text-anchor='${room ? 'start' : 'end'}'>${esc(c.out_label)}</text>`)
+      out.push(`<text class='ot ${red}' x='${r1(room ? x + 4 : x - 4)}' y='${pad.t + 10}' text-anchor='${room ? 'start' : 'end'}'>${esc(c.out_label)}</text>`)
     }
   }
   out.push(`<line class='nw' x1='${sx(c.now)}' y1='${pad.t}' x2='${sx(c.now)}' y2='${base}'/>`)
@@ -587,12 +587,12 @@ const r1 = (n: number) => Math.round(n * 10) / 10
 
 // 5 hex digits of FNV-1a: a gradient id of its own per bar.
 function hash(s: string): string {
-  let h = 0x811c9dc5
+  let fnv = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 0x01000193) >>> 0
+    fnv ^= s.charCodeAt(i)
+    fnv = Math.imul(fnv, 0x01000193) >>> 0
   }
-  return h.toString(16).padStart(8, '0').slice(0, 5)
+  return fnv.toString(16).padStart(8, '0').slice(0, 5)
 }
 
 // The bar of one window, W px wide: used in orange, then after a hairline gap
@@ -669,8 +669,8 @@ export function age(updated: number | null | undefined, now: number | undefined)
   const min = Math.max(0, Math.floor((now - updated) / 60))
   if (min < 1) return 'Updated just now.'
   if (min < 60) return `Updated ${min} min ago.`
-  const h = Math.round(min / 60)
-  return h < 48 ? `Updated ${h} h ago.` : `Updated ${Math.round(h / 24)} days ago.`
+  const hours = Math.round(min / 60)
+  return hours < 48 ? `Updated ${hours} h ago.` : `Updated ${Math.round(hours / 24)} days ago.`
 }
 
 export const register: Register = (on) => {

@@ -141,6 +141,37 @@ history stays in `~/.glidepath` (delete it if you want it gone).
 - **Nothing is added to Claude's context**, and nothing changes in
   `settings.json` except the `statusLine`, with a backup first.
 
+### What the band runs, reads and writes
+
+The band is the plugin's mod (`hooks/register.tsx`). It does its work through
+glidepath's own Python program, `bin/glidepath` in the plugin's folder:
+
+- **It starts Python.** To find one, it runs `<python> bin/glidepath --version`
+  with the first of `python3`, `/opt/homebrew/bin/python3`,
+  `/usr/local/bin/python3`, `/usr/bin/python3` and `python` (on Windows
+  `py -3`, `python`, `python3`) that answers as glidepath. After `glidepath
+  install` it uses the interpreter and the `bin/glidepath` that
+  `~/.glidepath/runtime.json` names instead. Then, when the rate limits change
+  and once a minute, it runs `<python> bin/glidepath statusline --source mod
+  --format json` and draws what that prints.
+- **What it passes on.** Only to that program, on its standard input: the
+  session id and the rate limits Claude Code gives the mod (each limit's
+  percentage used and reset time). The mod sends nothing over the network,
+  and neither does the program.
+- **What it reads.** `~/.glidepath/runtime.json`, and the environment
+  variables `GLIDEPATH_HOME`, `HOME`, `USERPROFILE`, `HOMEDRIVE`, `HOMEPATH`
+  and `OS`, to find that folder.
+- **What it writes.** `~/.glidepath/mod.log`: the last 40 lines of which
+  surfaces each session draws on, for `glidepath doctor`. Nothing runs or
+  obeys that file.
+- **What the program does.** It writes its history, config and logs in
+  `~/.glidepath`. On its first runs it learns your week in the background
+  (`glidepath bootstrap`): from Claude Code's transcripts in
+  `~/.claude/projects` it reads only each assistant message's time and token
+  counts. Only if you turn it on with `glidepath fetch --every`, it also starts
+  Claude Code (`claude`) to read `/usage`, a request Claude Code makes with
+  its own login.
+
 ## How it works
 
 The 5-hour pace is the slope of your recent usage. The weekly pace walks an
