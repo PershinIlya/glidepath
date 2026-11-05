@@ -1,5 +1,6 @@
 {
   "name": "glidepath",
+  "displayName": "glidepath",
   "version": "0.2.0",
   "description": "Know if your Claude Code usage will last until the reset: the 5-hour and weekly pace above the prompt",
   "author": {
@@ -14,5 +15,8 @@
     "statusline"
   ],
   "homepage": "https://github.com/PershinIlya/glidepath",
-  "repository": "https://github.com/PershinIlya/glidepath"
+  "repository": "https://github.com/PershinIlya/glidepath",
+  "documentationUrl": "https://github.com/PershinIlya/glidepath/blob/main/docs/guide.md",
+  "supportUrl": "https://github.com/PershinIlya/glidepath/issues",
+  "privacyPolicyUrl": "https://github.com/PershinIlya/glidepath#privacy-and-safety"
 }
