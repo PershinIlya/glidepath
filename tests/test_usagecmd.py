@@ -60,39 +60,42 @@ class Parse(unittest.TestCase):
 
 
 class Fetch(TempHome):
-    def run_fetch(self, text, rc=0, now=NOW):
+    def read_usage(self, text, rc=0, now=NOW):
+        """usagecmd.fetch with Claude Code's /usage printing `text`."""
         return usagecmd.fetch(now, run=lambda: (text, rc))
+
+    def samples(self, columns="COUNT(*)"):
+        return self.st.db.execute("SELECT %s FROM samples ORDER BY window" % columns).fetchall()
 
     @needs_zones
     def test_records_both_windows_from_its_own_session(self):
-        ok, msg = self.run_fetch(OUTPUT)
+        ok, msg = self.read_usage(OUTPUT)
         self.assertTrue(ok, msg)
-        rows = self.st.db.execute("SELECT window, used_pct, resets_at, source, session_id FROM samples ORDER BY window")
-        self.assertEqual(rows.fetchall(), [(config.FIVE_HOUR, 11.0, R5, "usage", "usage-cmd"),
+        self.assertEqual(self.samples("window, used_pct, resets_at, source, session_id"), [(config.FIVE_HOUR, 11.0, R5, "usage", "usage-cmd"),
                                            (config.SEVEN_DAY, 20.0, R7, "usage", "usage-cmd")])
         self.assertEqual(self.st.meta_get("usage_cmd_ok_at"), NOW)
         self.assertTrue(os.path.exists(config.stamp_path()))  # a new window wakes the bands
 
     def test_a_format_it_cannot_read_says_which_line(self):
-        ok, msg = self.run_fetch("Current session: 18% used · resets in a while (Europe/Berlin)\n")
+        ok, msg = self.read_usage("Current session: 18% used · resets in a while (Europe/Berlin)\n")
         self.assertEqual((ok, msg), (False, "could not read the reset time in /usage: Current session: 18% used · "
                                             "resets in a while (Europe/Berlin)"))
 
     def test_a_failure_records_nothing(self):
-        self.assertEqual(self.run_fetch("Error: not logged in", rc=1)[0], False)
-        self.assertEqual(self.st.db.execute("SELECT COUNT(*) FROM samples").fetchone()[0], 0)
+        self.assertEqual(self.read_usage("Error: not logged in", rc=1)[0], False)
+        self.assertEqual(self.samples(), [(0,)])
 
     def test_an_api_key_login_says_so(self):
         # The person's Windows claude (2.1.301): /usage printed the session's spend.
         spend = ("Total cost:            $0.0000\nTotal duration (API):  0s\nTotal duration (wall): 1s\n"
                  "Total code changes:    0 lines added, 0 lines removed\n"
                  "Usage:                 0 input, 0 output, 0 cache read, 0 cache write\n")
-        ok, msg = self.run_fetch(spend)
+        ok, msg = self.read_usage(spend)
         self.assertFalse(ok)
         self.assertIn("shows spend, not plan limits", msg)
         self.assertIn("trust", msg)
         self.assertIn(config.home(), msg)
-        self.assertEqual(self.st.db.execute("SELECT COUNT(*) FROM samples").fetchone()[0], 0)
+        self.assertEqual(self.samples(), [(0,)])
 
     def test_due_runs_at_most_every_so_many_minutes(self):
         self.assertFalse(usagecmd.due(self.st, NOW, 0))
