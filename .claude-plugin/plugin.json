@@ -13,7 +13,6 @@
     "rate-limits",
     "statusline"
   ],
-  "types": "./types/index.d.ts",
   "homepage": "https://github.com/PershinIlya/glidepath",
   "repository": "https://github.com/PershinIlya/glidepath"
 }
