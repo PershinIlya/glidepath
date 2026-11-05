@@ -32,8 +32,10 @@ with `/plugin uninstall glidepath` and `/plugin marketplace remove glidepath`.
 
 ## Install (macOS and Linux)
 
+Clone this repository (`git clone` with its address, or GitHub's **Code**
+button), for example to `~/Projects/glidepath`, and in that folder:
+
 ```sh
-git clone https://github.com/PershinIlya/glidepath.git ~/Projects/glidepath && cd ~/Projects/glidepath
 python3 bin/glidepath install                          # dry run: shows the diff, changes nothing
 python3 bin/glidepath install --apply --bin-dir ~/.local/bin
 ```
@@ -74,11 +76,10 @@ You need Python 3.8+, and 3.12+ renders about 30 ms faster on Windows
 Python install manager. Git for Windows is optional (`git clone` needs it,
 or download the repo as a ZIP): Claude Code runs the status line in Git Bash
 when it finds one, else in PowerShell, and install prints which. In
-PowerShell, each command on its own line (Windows PowerShell 5.1 has no `&&`):
+PowerShell, each command on its own line (Windows PowerShell 5.1 has no `&&`),
+in the clone's folder (for example `$HOME\Projects\glidepath`):
 
 ```powershell
-git clone https://github.com/PershinIlya/glidepath.git $HOME\Projects\glidepath
-cd $HOME\Projects\glidepath
 py -3 bin\glidepath install                                    # dry run
 py -3 bin\glidepath install --apply --bin-dir $HOME\.local\bin
 ```

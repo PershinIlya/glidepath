@@ -65,12 +65,11 @@ sessions, in the background. It runs the Python code that comes with it, with
 the first Python 3.8+ it finds; when it finds none, the band says so.
 
 **The status line and the menu bar.** For glidepath in the terminal's own
-status line, and for the macOS menu bar, install it from a clone too. macOS
-and Linux:
+status line, and for the macOS menu bar, install it from a clone too. Clone
+this repository (`git clone` with its address, or GitHub's **Code** button),
+for example to `~/Projects/glidepath`, and in that folder, on macOS and Linux:
 
 ```sh
-git clone https://github.com/PershinIlya/glidepath.git ~/Projects/glidepath
-cd ~/Projects/glidepath
 python3 bin/glidepath install                                  # a dry run: shows what it would change
 python3 bin/glidepath install --apply --bin-dir ~/.local/bin
 ```
@@ -78,8 +77,6 @@ python3 bin/glidepath install --apply --bin-dir ~/.local/bin
 Windows, in PowerShell (one command a line):
 
 ```powershell
-git clone https://github.com/PershinIlya/glidepath.git $HOME\Projects\glidepath
-cd $HOME\Projects\glidepath
 py -3 bin\glidepath install                                    # a dry run
 py -3 bin\glidepath install --apply --bin-dir $HOME\.local\bin
 ```
